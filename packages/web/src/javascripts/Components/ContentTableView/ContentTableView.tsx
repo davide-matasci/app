@@ -211,7 +211,7 @@ const AttachedToCell = ({ item }: { item: DecryptedItemInterface }) => {
         link={allLinks[0]}
         key={allLinks[0].id}
         unlinkItem={async (itemToUnlink) => {
-          void application.mutator.unlinkItems(item, itemToUnlink)
+          void application.linkingController.unlinkItemsUnlessMentioned(item, itemToUnlink)
         }}
         isBidirectional={false}
       />

@@ -5,6 +5,7 @@ import { AppPaneId } from '@/Components/Panes/AppPaneMetadata'
 import { createLinkFromItem } from '@/Utils/Items/Search/createLinkFromItem'
 import { LinkableItem } from '@/Utils/Items/Search/LinkableItem'
 import {
+  AlertService,
   ApplicationEvent,
   ContentType,
   FileItem,
@@ -12,6 +13,7 @@ import {
   PrefKey,
   SNNote,
   SNTag,
+  NoteType,
   isFile,
   isNote,
   InternalEventBusInterface,
@@ -54,6 +56,7 @@ export class LinkingController extends AbstractViewController implements Interna
     private mutator: MutatorClientInterface,
     private sync: SyncServiceInterface,
     private vaults: VaultServiceInterface,
+    private alerts: AlertService,
     eventBus: InternalEventBusInterface,
   ) {
     super(eventBus)
@@ -186,6 +189,32 @@ export class LinkingController extends AbstractViewController implements Interna
     }
 
     void this.sync.sync()
+  }
+
+  /**
+   * For the linked-items bar and panel: a link whose item is still mentioned in a
+   * Super note's text (an @ bubble or an embedded file) is not removed, so links
+   * and mentions stay in step. Removing the last mention removes the link.
+   */
+  unlinkItemsUnlessMentioned = async (item: LinkableItem, itemToUnlink: LinkableItem) => {
+    const mentioning = [item, itemToUnlink].find((candidate) => {
+      const other = candidate === item ? itemToUnlink : item
+      return isNote(candidate) && candidate.noteType === NoteType.Super && candidate.text.includes(other.uuid)
+    })
+
+    if (mentioning) {
+      const mentioned = mentioning === item ? itemToUnlink : item
+      const mentionedTitle = mentioned.title || c('Label').t`this item`
+      const noteTitle = mentioning.title || c('Label').t`the note`
+      await this.alerts.alert(
+        c('Info')
+          .t`"${mentionedTitle}" is mentioned in the text of "${noteTitle}". Remove the mention to remove the link.`,
+        c('Title').t`Link in use`,
+      )
+      return
+    }
+
+    await this.unlinkItems(item, itemToUnlink)
   }
 
   unlinkItemFromSelectedItem = async (itemToUnlink: LinkableItem) => {
