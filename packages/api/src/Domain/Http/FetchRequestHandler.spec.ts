@@ -139,8 +139,18 @@ describe('FetchRequestHandler', () => {
       expect(response.status).toBe(599)
       expect(response.headers).toEqual(new Map<string, string | null>([['content-type', 'text/plain']]))
       expect((response.data as HttpErrorResponseBody).error).toEqual({
-        message: 'Unknown error',
+        message: 'server responded with 599',
       })
     })
+  })
+
+  it('should report the server as unavailable when no response arrives', async () => {
+    const originalFetch = global.fetch
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const response = await requestHandler['runRequest'](new Request('https://sync.example.com/v1/items'))
+
+    global.fetch = originalFetch
+    expect((response.data as HttpErrorResponseBody).error).toEqual({ message: 'server unavailable' })
   })
 })

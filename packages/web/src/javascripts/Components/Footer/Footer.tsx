@@ -203,15 +203,17 @@ class Footer extends AbstractComponent<Props, State> {
         this.updateSyncStatus()
         break
       case ApplicationEvent.FailedSync:
-        this.updateSyncStatus()
         this.findErrors()
         this.updateOfflineStatus()
-        this.setState({
-          failedSyncError: getErrorMessageFromErrorResponseBody(
-            data as HttpErrorResponseBody,
-            c('B2.NavSharedUI.Error').t`Sync error. Please try again later.`,
-          ),
-        })
+        this.setState(
+          {
+            failedSyncError: getErrorMessageFromErrorResponseBody(
+              data as HttpErrorResponseBody,
+              c('B2.NavSharedUI.Error').t`please try again later`,
+            ),
+          },
+          () => this.updateSyncStatus(),
+        )
         break
       case ApplicationEvent.LocalDataIncrementalLoad:
       case ApplicationEvent.LocalDataLoaded:
@@ -234,7 +236,11 @@ class Footer extends AbstractComponent<Props, State> {
     const syncStatus = this.application.sync.getSyncStatus()
     const stats = syncStatus.getStats()
     if (syncStatus.hasError()) {
-      statusManager.setMessage(c('B2.NavSharedUI.Error').t`Unable to Sync`)
+      /** One message for a failed sync: the reason, when known. */
+      const reason = this.state.failedSyncError
+      statusManager.setMessage(
+        reason ? c('B2.NavSharedUI.Error').t`Sync error: ${reason}` : c('B2.NavSharedUI.Error').t`Sync error`,
+      )
     } else if (stats.downloadCount > 20) {
       statusManager.setMessage(c('B2.NavSharedUI.Status').t`Downloading ${stats.downloadCount} items. Keep app open.`)
       this.showingDownloadStatus = true
@@ -406,11 +412,6 @@ class Footer extends AbstractComponent<Props, State> {
             )}
           </div>
           <div className="right flex h-full flex-shrink-0">
-            {this.state.failedSyncError && (
-              <div className="relative z-footer-bar-item flex select-none items-center text-xs font-bold text-neutral">
-                {c('B2.NavSharedUI.Error').jt`Sync error: ${this.state.failedSyncError}`}
-              </div>
-            )}
             {this.state.dataUpgradeAvailable && (
               <div
                 onClick={this.securityUpdateClickHandler}
