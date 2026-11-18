@@ -173,8 +173,9 @@ export abstract class Collection<
     }
 
     for (const element of elements) {
+      const isNew = this.map[element.uuid] == undefined
       this.map[element.uuid] = element
-      this.setToTypedMap(element)
+      this.setToTypedMap(element, isNew)
 
       if (this.isErrorDecryptingElement(element)) {
         this.invalidsIndex.add(element.uuid)
@@ -264,9 +265,12 @@ export abstract class Collection<
     return items.filter((item) => item.content_type === contentType)
   }
 
-  private setToTypedMap(element: Element): void {
+  /** A new element can't already be in the typed map, so it skips the linear removal scan. */
+  private setToTypedMap(element: Element, isNew: boolean): void {
     const array = this.typedMap[element.content_type] || []
-    remove(array, { uuid: element.uuid as never })
+    if (!isNew) {
+      remove(array, { uuid: element.uuid as never })
+    }
     array.push(element)
     this.typedMap[element.content_type] = array
   }
