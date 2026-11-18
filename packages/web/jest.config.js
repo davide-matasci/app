@@ -20,7 +20,11 @@ module.exports = {
     __WEB_VERSION__: '1.0.0',
   },
   transform: {
-    '^.+\\.(ts|tsx|js|jsx)?$': 'ts-jest',
+    /**
+     * Transpile only: type-checking every test's import graph made this suite take ~10 minutes
+     * in CI. Types are still checked by `yarn tsc` (lint and build), which covers the specs too.
+     */
+    '^.+\\.(ts|tsx|js|jsx)?$': ['ts-jest', { isolatedModules: true, tsconfig: '<rootDir>/tsconfig.jest.json' }],
     '\\.svg$': 'svg-jest',
   },
   transformIgnorePatterns: [
