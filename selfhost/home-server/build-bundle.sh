@@ -30,7 +30,7 @@ tar cf - --exclude=.git --exclude='*.ts' --exclude='*.map' . | tar xf - -C "$WOR
 cd "$WORK/sn"
 yarn workspaces focus @standardnotes/home-server --production
 rm -rf packages/home-server/dist/data packages/home-server/.env
-cp "$HERE/start.sh" "$HERE/env.example" "$HERE/activate-premium.js" .
+cp "$HERE/start.sh" "$HERE/env.example" "$HERE/activate-premium.js" "$HERE/sync-diag.js" .
 echo "$SERVER_REF" > SERVER_REF
 
 arch="$(uname -m)"
