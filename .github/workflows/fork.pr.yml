@@ -1,0 +1,40 @@
+name: Fork PR
+
+# Personal-fork CI: the useful part of the upstream "General PR" workflow
+# (which also builds desktop and an Android bundle). Builds the web app and
+# its packages, lints, and runs every package's unit tests. No secrets needed.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Never runs in the upstream repository.
+    if: github.repository != 'standardnotes/app'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Build web and its packages
+        run: yarn build:web
+      - name: ESLint
+        run: yarn lint
+      - name: Test
+        run: yarn test

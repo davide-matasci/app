@@ -337,10 +337,10 @@ export class NavigationController
 
   tagUsesTableView(tag: AnyTag): boolean {
     const isSystemView = tag instanceof SmartView && Object.values(SystemViewId).includes(tag.uuid as SystemViewId)
-    const useTableView = isSystemView
+    const preferences = isSystemView
       ? this.preferences.getValue(PrefKey.SystemViewPreferences)?.[tag.uuid as SystemViewId]
       : tag?.preferences
-    return Boolean(useTableView)
+    return Boolean(preferences?.useTableView)
   }
 
   public isInAnySystemView(): boolean {

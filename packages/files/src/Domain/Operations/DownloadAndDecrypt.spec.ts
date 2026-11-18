@@ -116,4 +116,18 @@ describe('download and decrypt', () => {
     expect(progress.encryptedFileSize).toEqual(500_000)
     expect(progress.percentComplete).toEqual(20.0)
   })
+
+  it('should report a chunk that fails to decrypt as an error, not a cancel', async () => {
+    crypto.xchacha20StreamDecryptorPush = jest.fn().mockReturnValue(false)
+
+    operation = new DownloadAndDecryptFileOperation(file, crypto, apiService, 'own')
+
+    const result = await operation.run(async () => {
+      await Promise.resolve()
+    })
+
+    expect(result.success).toEqual(false)
+    expect(result.aborted).toEqual(false)
+    expect(result.error?.text).toEqual('Failed to decrypt chunk')
+  })
 })

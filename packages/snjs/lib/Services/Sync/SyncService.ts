@@ -911,7 +911,10 @@ export class SyncService
 
     if (options.mode === SyncMode.LocalOnly) {
       this.logger.debug('Syncing local only, skipping remote sync request')
-      releaseLock()
+      /** Only release a lock this call took: another sync may hold it. */
+      if (shouldExecuteSync) {
+        releaseLock()
+      }
       return
     }
 
@@ -958,6 +961,11 @@ export class SyncService
 
     const { hasError } = await this.handleSyncOperationFinish(operation, options, neverSyncedDeleted, syncMode)
     if (hasError) {
+      /**
+       * These callers were taken off the resolve queue for this request; nothing
+       * else would settle them, so their sync() calls would never return.
+       */
+      this.resolvePendingSyncRequestsThatMadeItInTimeOfCurrentRequest(inTimeResolveQueue)
       return
     }
 

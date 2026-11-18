@@ -718,8 +718,11 @@ export class ItemManager extends Services.AbstractService implements Services.It
 
     let parentId = tag.parentId
     const chain: Models.SNTag[] = []
+    /** Parents synced from two devices can form a cycle (A under B, B under A). */
+    const visited = new Set<string>([tag.uuid])
 
-    while (parentId) {
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId)
       const parent = this.findItem<Models.SNTag>(parentId)
       if (!parent) {
         return chain
@@ -742,13 +745,20 @@ export class ItemManager extends Services.AbstractService implements Services.It
     return tags.filter((tag) => tag.parentId === itemToLookupUuidFor.uuid)
   }
 
-  public getDeepTagChildren(itemToLookupUuidFor: Models.SNTag): Models.SNTag[] {
+  public getDeepTagChildren(
+    itemToLookupUuidFor: Models.SNTag,
+    visited = new Set<string>([itemToLookupUuidFor.uuid]),
+  ): Models.SNTag[] {
     const allChildren: Models.SNTag[] = []
 
     const children = this.getTagChildren(itemToLookupUuidFor)
     for (const child of children) {
+      if (visited.has(child.uuid)) {
+        continue
+      }
+      visited.add(child.uuid)
       allChildren.push(child)
-      allChildren.push(...this.getDeepTagChildren(child))
+      allChildren.push(...this.getDeepTagChildren(child, visited))
     }
 
     return allChildren
@@ -761,8 +771,10 @@ export class ItemManager extends Services.AbstractService implements Services.It
     }
 
     let parentId = tag.parentId
+    const visited = new Set<string>([tag.uuid])
 
-    while (parentId) {
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId)
       if (parentId === tagToLookUpUuidFor.uuid) {
         return true
       }

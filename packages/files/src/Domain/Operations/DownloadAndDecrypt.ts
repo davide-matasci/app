@@ -66,6 +66,11 @@ export class DownloadAndDecryptFileOperation {
 
     const downloadResult = await this.downloader.run(onDownloadBytes)
 
+    /** A chunk that failed to decrypt aborts the download: report it, not a user cancel. */
+    if (decryptError) {
+      return { success: false, error: decryptError, aborted: false }
+    }
+
     return {
       success: downloadResult instanceof ClientDisplayableError ? false : true,
       error: downloadResult === 'aborted' ? undefined : downloadResult || decryptError,
