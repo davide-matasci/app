@@ -297,7 +297,7 @@ export class Dependencies {
     })
 
     this.factory.set(TYPES.IsApplicationUsingThirdPartyHost, () => {
-      return new IsApplicationUsingThirdPartyHost(this.get<GetHost>(TYPES.GetHost))
+      return new IsApplicationUsingThirdPartyHost(this.get<GetHost>(TYPES.GetHost), this.options.defaultHost)
     })
 
     this.factory.set(TYPES.SetHost, () => {

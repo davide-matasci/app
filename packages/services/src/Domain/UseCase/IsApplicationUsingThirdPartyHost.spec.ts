@@ -57,4 +57,31 @@ describe('IsApplicationUsingThirdPartyHost', () => {
 
     expect(result.getValue()).toBe(true)
   })
+
+  it('returns false if host is the default host the application was built with', () => {
+    getHostUseCase.execute = jest.fn().mockReturnValue(Result.ok('https://sync.example.com'))
+
+    const useCase = new IsApplicationUsingThirdPartyHost(getHostUseCase, 'https://sync.example.com/')
+    const result = useCase.execute()
+
+    expect(result.getValue()).toBe(false)
+  })
+
+  it('returns true if host differs from the default host the application was built with', () => {
+    getHostUseCase.execute = jest.fn().mockReturnValue(Result.ok('https://example.com'))
+
+    const useCase = new IsApplicationUsingThirdPartyHost(getHostUseCase, 'https://sync.example.com')
+    const result = useCase.execute()
+
+    expect(result.getValue()).toBe(true)
+  })
+
+  it('ignores an invalid default host', () => {
+    getHostUseCase.execute = jest.fn().mockReturnValue(Result.ok('https://example.com'))
+
+    const useCase = new IsApplicationUsingThirdPartyHost(getHostUseCase, 'not a url')
+    const result = useCase.execute()
+
+    expect(result.getValue()).toBe(true)
+  })
 })
