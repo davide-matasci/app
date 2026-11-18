@@ -64,13 +64,24 @@ export class AccountSyncOperation {
     const response = new ServerSyncResponse(rawResponse)
     this.responses.push(response)
 
-    this.options.syncToken = response.lastSyncToken as string
-    this.options.paginationToken = response.paginationToken as string
+    if (!response.hasError) {
+      this.options.syncToken = response.lastSyncToken as string
+      this.options.paginationToken = response.paginationToken as string
+    }
 
     try {
       await this.receiver(SyncSignal.Response, response)
     } catch (error) {
       console.error('Sync handle response error', error)
+    }
+
+    /**
+     * Stop after an error: continuing would send the next batch without a sync
+     * token (a full re-download that conflicts with the batch that failed). Items
+     * not saved stay dirty and go out with the next sync.
+     */
+    if (response.hasError) {
+      return
     }
 
     if (!this.done) {

@@ -297,6 +297,21 @@ describe('itemManager', () => {
       expect(d?.parentId).not.toEqual(parent.uuid)
     })
 
+    it('stops at a cycle in tag parents instead of looping forever', async () => {
+      const a = createTag('a')
+      const b = createTag('b')
+      const outside = createTag('outside')
+      await mutator.insertItems([a, b, outside])
+      await mutator.setTagParent(b, a)
+      // A cycle as two devices can sync it: setTagParent itself refuses to make one.
+      await mutator.changeItem<Models.TagMutator>(b, (m) => m.makeChildOf(a))
+
+      const cyclicA = itemManager.findItem<Models.SNTag>(a.uuid) as Models.SNTag
+      expect(itemManager.getTagParentChain(cyclicA).map((tag) => tag.title)).toEqual(['b'])
+      expect(itemManager.isTagAncestor(outside, cyclicA)).toBeFalsy()
+      expect(itemManager.getDeepTagChildren(cyclicA).map((tag) => tag.title)).toEqual(['b'])
+    })
+
     it('isAncestor', async () => {
       const grandParent = createTag('grandParent')
       const parent = createTag('parent')

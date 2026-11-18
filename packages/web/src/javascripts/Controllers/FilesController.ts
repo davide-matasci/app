@@ -457,6 +457,17 @@ export class FilesController extends AbstractViewController<FilesControllerEvent
   }
 
   alertIfFileExceedsSizeLimit = (file: File): boolean => {
+    /**
+     * An empty file has no chunk to encrypt: the streaming reader crashes on it, and an
+     * empty chunk would fail to decrypt on download. Say so instead.
+     */
+    if (file.size === 0) {
+      this.alerts
+        .alert(c('B7.FilesSubscriptionHelp.Files.Error').t`This file is empty.`, StringCannotUploadFile(file.name))
+        .catch(console.error)
+      return true
+    }
+
     if (!this.shouldUseStreamingAPI && this.maxFileSize && file.size >= this.maxFileSize) {
       const maxFileSizeInMegabytes = this.maxFileSize / BYTES_IN_ONE_MEGABYTE
       this.alerts
@@ -576,7 +587,11 @@ export class FilesController extends AbstractViewController<FilesControllerEvent
       }
 
       const onChunk: OnChunkCallbackNoProgress = async ({ data, index, isLast }) => {
-        await this.files.pushBytesForUpload(operation, data, index, isLast)
+        const pushError = await this.files.pushBytesForUpload(operation, data, index, isLast)
+        if (pushError) {
+          // Stop here: finishing would save a file with a chunk the server never stored.
+          throw new Error(pushError.text)
+        }
 
         const percentComplete = Math.round(operation.getProgress().percentComplete)
         this.uploadProgressMap.set(uuid, {

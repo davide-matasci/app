@@ -1334,7 +1334,10 @@ export class ItemListController
       return
     }
 
-    const currentIndex = displayableItems.indexOf(this.lastSelectedItem)
+    /** By uuid, as in selectNextItem: an edited item is a new object. */
+    const currentIndex = displayableItems.findIndex((candidate) => {
+      return candidate.uuid === this.lastSelectedItem?.uuid
+    })
 
     let previousIndex = currentIndex - 1
 

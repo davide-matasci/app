@@ -74,7 +74,8 @@ export class FileDownloader {
     return result
   }
 
-  public abort(): void {
+  /** An arrow function: it is handed out as a callback and must keep `this`. */
+  public abort = (): void => {
     this.aborted = true
 
     this.abortDeferred.resolve('aborted')
