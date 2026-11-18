@@ -1,4 +1,3 @@
-// Temporary implementation until integration
 export function downloadSecretKey(text: string) {
   const link = document.createElement('a')
   const blob = new Blob([text], {
@@ -9,5 +8,6 @@ export function downloadSecretKey(text: string) {
   document.body.appendChild(link)
   link.click()
   link.remove()
-  window.URL.revokeObjectURL(link.href)
+  /** Revoking right after click() can cancel the download in Safari and Firefox. */
+  setTimeout(() => window.URL.revokeObjectURL(link.href), 1000)
 }
