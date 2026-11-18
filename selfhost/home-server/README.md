@@ -87,6 +87,23 @@ custom domain, `SYNC_SERVER_URL` = `https://sync.example.com`, create your
 account, then set `DISABLE_USER_REGISTRATION=true` in `.env` and
 `linux --root /data/alpine sh /opt/sn/start.sh restart`.
 
+## Paid features on your own server
+
+`activate-premium.js` marks an account as subscribed (Pro, until 2099) with
+the server's own activation code. The fork's web app then trusts that,
+because it counts the server it was built for (`SYNC_SERVER_URL`) as
+first-party; other builds ignore subscriptions from third-party servers.
+
+```sh
+# bundles built before this script existed: fetch it once
+curl -fL -o /data/alpine/opt/sn/activate-premium.js \
+  https://raw.githubusercontent.com/davide-matasci/app/main/selfhost/home-server/activate-premium.js
+linux --root /data/alpine sh -c 'cd /var/lib/sn && node --require /opt/sn/.pnp.cjs /opt/sn/activate-premium.js you@example.com'
+linux --root /data/alpine sh /opt/sn/start.sh restart
+```
+
+Then sign out and back in on the web app.
+
 ## Backups
 
 The whole state is `/data/alpine/var/lib/sn` (the SQLite database and

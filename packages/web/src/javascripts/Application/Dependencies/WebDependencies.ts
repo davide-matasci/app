@@ -225,7 +225,10 @@ export class WebDependencies extends DependencyContainer {
     })
 
     this.bind(Web_TYPES.IsApplicationUsingThirdPartyHost, () => {
-      return new IsApplicationUsingThirdPartyHost(this.get<GetHost>(Web_TYPES.GetHost))
+      return new IsApplicationUsingThirdPartyHost(
+        this.get<GetHost>(Web_TYPES.GetHost),
+        application.options.defaultHost,
+      )
     })
 
     this.bind(Web_TYPES.IsTabletOrMobileScreen, () => {
