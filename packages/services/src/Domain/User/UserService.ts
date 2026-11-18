@@ -341,9 +341,22 @@ export class UserService
 
   public async signOut(force = false, source = DeinitSource.SignOut): Promise<void> {
     const performSignOut = async () => {
-      await this.sessions.signOut()
+      /**
+       * Wipe this device first: waiting for the server first left keys and data on the
+       * device for as long as an unreachable server took to fail (the sign-out dialog
+       * closes at once, so the tab could be closed meanwhile).
+       */
       await this.encryption.deleteWorkspaceSpecificKeyStateFromDevice()
       await this.storage.clearAllData()
+
+      const ServerSignOutTimeoutMs = 3000
+      await Promise.race([
+        this.sessions.signOut().catch(console.error),
+        new Promise((resolve) => setTimeout(resolve, ServerSignOutTimeoutMs)),
+      ])
+      /** A session refreshed during the server call may have been stored again. */
+      await this.storage.clearAllData()
+
       await this.notifyEvent(AccountEvent.SignedOut, { payload: { source } })
     }
 
@@ -637,11 +650,23 @@ export class UserService
     const itemsKeyWasSynced = !defaultItemsKey.neverSynced
 
     if (!itemsKeyWasSynced) {
-      await this.sessions.changeCredentials({
+      const { response: revertResponse } = await this.sessions.changeCredentials({
         currentServerPassword: newRootKey.serverPassword as string,
         newRootKey: currentRootKey,
         wrappingKey,
+        newEmail: newEmail ? currentEmail : undefined,
       })
+
+      /**
+       * The revert did not reach the server (usually the same network failure that kept the
+       * new items key from syncing): the server keeps the new credentials, and so does this
+       * device. Keep the new items key too (it uploads with the next successful sync) and
+       * report success, instead of "failed" while the old password no longer works.
+       */
+      if (isErrorResponse(revertResponse)) {
+        return {}
+      }
+
       await this._reencryptTypeAItems.execute()
       await rollback()
       await this.sync.sync({ awaitAll: true })
