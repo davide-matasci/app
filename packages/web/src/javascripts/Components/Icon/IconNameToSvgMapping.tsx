@@ -10,6 +10,7 @@ export const IconNameToSvgMapping = {
   'arrow-left': icons.ArrowLeftIcon,
   'arrow-right': icons.ArrowRightIcon,
   'arrow-up': icons.ArrowUpIcon,
+  'arrows-horizontal': icons.ArrowsHorizontalIcon,
   'arrows-sort-down': icons.ArrowsSortDownIcon,
   'arrows-sort-up': icons.ArrowsSortUpIcon,
   'arrows-vertical': icons.ArrowsVerticalIcon,

@@ -98,6 +98,21 @@ const LinkedItemBubble = ({
   }
 
   const [icon, iconClassName] = getIconForItem(link.item, application)
+
+  /** ← this item links here (a backlink); ↔ the two link to each other. Tags have no direction. */
+  const direction =
+    link.item.content_type === ContentType.TYPES.Tag
+      ? undefined
+      : isBidirectional
+      ? { icon: 'arrows-horizontal' as const, label: c('B4.Notes.TagsLinkedItems.Label').t`Linked both ways` }
+      : link.type === 'linked-by'
+      ? { icon: 'arrow-left' as const, label: c('B4.Notes.TagsLinkedItems.Label').t`Links to this item` }
+      : undefined
+  const directionIcon = direction && (
+    <span title={direction.label} aria-label={direction.label} className="inline-flex flex-shrink-0">
+      <Icon type={direction.icon} className="text-passive-1" size="small" />
+    </span>
+  )
   const tagTitle = getTitleForLinkedTag(link.item, application)
 
   useEffect(() => {
@@ -127,10 +142,7 @@ const LinkedItemBubble = ({
         <Icon type={icon} className={classNames('mr-1 flex-shrink-0', iconClassName)} size="small" />
         <span className="whitespace-pre-wrap">
           {tagTitle && <span className="text-passive-1">{tagTitle.titlePrefix}</span>}
-          {link.type === 'linked-by' && link.item.content_type !== ContentType.TYPES.Tag && (
-            <span className={!isBidirectional ? 'hidden group-focus:inline' : ''}>{c('B4.Notes.TagsLinkedItems.Label')
-              .t`Linked By:`}</span>
-          )}
+          {directionIcon}
           {getItemTitleInContextOfLinkBubble(link.item)}
         </span>
         {showUnlinkButton && !readonly && (
@@ -166,10 +178,7 @@ const LinkedItemBubble = ({
       <span className="flex items-center overflow-hidden overflow-ellipsis whitespace-nowrap">
         {tagTitle && <span className="text-passive-1">{tagTitle.titlePrefix}</span>}
         <span className="flex items-center gap-1">
-          {link.type === 'linked-by' && link.item.content_type !== ContentType.TYPES.Tag && (
-            <span className={!isBidirectional ? 'hidden group-focus:block' : ''}>{c('B4.Notes.TagsLinkedItems.Label')
-              .t`Linked By:`}</span>
-          )}
+          {directionIcon}
           {getItemTitleInContextOfLinkBubble(link.item)}
         </span>
       </span>

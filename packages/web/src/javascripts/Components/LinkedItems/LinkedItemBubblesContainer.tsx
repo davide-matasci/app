@@ -90,11 +90,17 @@ const LinkedItemBubblesContainer = ({
   )
 
   const [focusedId, setFocusedId] = useState<string>()
+  /** A two-way link shows once (as ↔): drop the backlink of an item this one also links to. */
+  const forwardLinkedUuids = new Set(allItemsLinkedToItem.map((link) => link.item.uuid))
+  const backlinksToShow = ([] as ItemLink[])
+    .concat(notesLinkingToItem)
+    .concat(filesLinkingToItem)
+    .filter((link) => !forwardLinkedUuids.has(link.item.uuid))
+
   const focusableIds = allItemsLinkedToItem
     .map((link) => link.id)
     .concat(
-      notesLinkingToItem.map((link) => link.id),
-      filesLinkingToItem.map((link) => link.id),
+      backlinksToShow.map((link) => link.id),
       [ElementIds.ItemLinkAutocompleteInput],
     )
 
@@ -137,7 +143,7 @@ const LinkedItemBubblesContainer = ({
     )
   }
 
-  const itemsToDisplay = allItemsLinkedToItem.concat(notesLinkingToItem).concat(filesLinkingToItem)
+  const itemsToDisplay = allItemsLinkedToItem.concat(backlinksToShow)
   const ItemsToShowWhenCollapsed = 5
   const [isCollapsed, setIsCollapsed] = useState(
     itemsToDisplay.length < ItemsToShowWhenCollapsed ? false : isCollapsedByDefault,
