@@ -4,6 +4,10 @@ This folder runs your own Standard Notes sync server on a cloud VPS, with
 automatic HTTPS. The fork's web app (GitHub Pages) and iOS app can then sync
 to it instead of `api.standardnotes.com`.
 
+**On myos, or anywhere without Docker:** use the lighter home server in
+[`home-server/`](home-server/README.md) for steps 1–3 below, then continue
+here from step 4.
+
 Fork-only files: nothing here exists upstream, so upstream merges are not
 affected. `docker-compose.yml` and `localstack_bootstrap.sh` come from
 [standardnotes/server](https://github.com/standardnotes/server)
