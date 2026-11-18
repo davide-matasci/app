@@ -34,6 +34,8 @@ export class NoteSyncController {
   savingLocallyPromise: ReturnType<typeof Deferred<void>> | null = null
 
   private syncTimeout?: ReturnType<typeof setTimeout>
+  /** All changes since the last save: a title save and a text save must not cancel each other. */
+  private pendingSave?: { params: NoteSaveFunctionParams; isLargeNote: boolean; resolvers: (() => void)[] }
   private largeNoteSyncTimeout?: ReturnType<typeof setTimeout>
   private statusChangeTimeout?: ReturnType<typeof setTimeout>
 
@@ -52,6 +54,19 @@ export class NoteSyncController {
       status: observable,
       setStatus: action,
     })
+
+    window.addEventListener('pagehide', this.flushOnPageLeave)
+    document.addEventListener('visibilitychange', this.flushOnPageLeave)
+  }
+
+  /**
+   * Closing or reloading the tab, quitting the app or sending it to the background must
+   * not wait for the save debounce: save what was typed right away.
+   */
+  private flushOnPageLeave = (event: Event) => {
+    if (event.type === 'pagehide' || document.visibilityState === 'hidden') {
+      this.flushPendingSave()
+    }
   }
 
   setStatus(status: NoteStatus, wait = true) {
@@ -116,6 +131,12 @@ export class NoteSyncController {
   }
 
   deinit() {
+    window.removeEventListener('pagehide', this.flushOnPageLeave)
+    document.removeEventListener('visibilitychange', this.flushOnPageLeave)
+
+    /** Closing the note (switching notes) must save what was typed, not drop it. */
+    const hadPendingSave = this.pendingSave !== undefined
+    this.flushPendingSave()
     if (this.syncTimeout) {
       clearTimeout(this.syncTimeout)
     }
@@ -125,7 +146,8 @@ export class NoteSyncController {
     if (this.statusChangeTimeout) {
       clearTimeout(this.statusChangeTimeout)
     }
-    if (this.savingLocallyPromise) {
+    /** A flushed save resolves it when stored; only an unfinished one is rejected. */
+    if (this.savingLocallyPromise && !hadPendingSave) {
       this.savingLocallyPromise.reject()
     }
     this.savingLocallyPromise = null
@@ -156,25 +178,45 @@ export class NoteSyncController {
       : EditorSaveTimeoutDebounce.Desktop
 
     return new Promise((resolve) => {
-      const isLargeNote = this.isLargeNote(params.text ? params.text : this.item.text)
+      const mergedParams = mergeSaveParams(this.pendingSave?.params, params)
+      const isLargeNote = this.isLargeNote(mergedParams.text ? mergedParams.text : this.item.text)
 
       if (isLargeNote) {
         this.showWaitingToSyncLargeNoteStatus()
         this.queueLargeNoteSyncIfNeeded()
       }
 
-      this.syncTimeout = setTimeout(() => {
-        void this.undebouncedMutateAndSync({
-          ...params,
-          localOnly: isLargeNote,
-          onLocalPropagationComplete: () => {
-            if (this.savingLocallyPromise) {
-              this.savingLocallyPromise.resolve()
-            }
-            resolve()
-          },
-        })
-      }, syncDebounceMs)
+      this.pendingSave = {
+        params: mergedParams,
+        isLargeNote,
+        resolvers: [...(this.pendingSave?.resolvers ?? []), resolve],
+      }
+
+      this.syncTimeout = setTimeout(() => this.flushPendingSave(), syncDebounceMs)
+    })
+  }
+
+  /** Saves the pending changes now, if any (note closed, page hidden or closing). */
+  public flushPendingSave(): void {
+    const pending = this.pendingSave
+    if (!pending) {
+      return
+    }
+
+    this.pendingSave = undefined
+    if (this.syncTimeout) {
+      clearTimeout(this.syncTimeout)
+      this.syncTimeout = undefined
+    }
+
+    const savingLocallyPromise = this.savingLocallyPromise
+    void this.undebouncedMutateAndSync(this.item, {
+      ...pending.params,
+      localOnly: pending.isLargeNote,
+      onLocalPropagationComplete: () => {
+        savingLocallyPromise?.resolve()
+        pending.resolvers.forEach((resolve) => resolve())
+      },
     })
   }
 
@@ -201,14 +243,17 @@ export class NoteSyncController {
     void this.sync.sync()
   }
 
-  private async undebouncedMutateAndSync(params: NoteSaveFunctionParams & { localOnly: boolean }): Promise<void> {
-    if (!this.items.findItem(this.item.uuid)) {
+  private async undebouncedMutateAndSync(
+    item: SNNote,
+    params: NoteSaveFunctionParams & { localOnly: boolean },
+  ): Promise<void> {
+    if (!this.items.findItem(item.uuid)) {
       void this.alerts.alert(InfoStrings.InvalidNote)
       return
     }
 
     await this.mutator.changeItem(
-      this.item,
+      item,
       (mutator) => {
         const noteMutator = mutator as NoteMutator
         if (params.customMutate) {
@@ -240,7 +285,10 @@ export class NoteSyncController {
 
     void this.sync.sync({ mode: params.localOnly ? SyncMode.LocalOnly : undefined })
 
-    this.queueLargeNoteSyncIfNeeded()
+    /** Flushed by deinit (note closed): the item is gone, nothing more to queue. */
+    if (this.item) {
+      this.queueLargeNoteSyncIfNeeded()
+    }
 
     params.onLocalPropagationComplete?.()
   }
@@ -250,5 +298,36 @@ export class NoteSyncController {
     if (isLargeNote) {
       void this.performSyncOfLargeItem()
     }
+  }
+}
+
+/**
+ * Combines a pending save with a newer one: the newer value of each field wins, and a
+ * field only the pending save set (e.g. the title, when the newer save is for the text)
+ * is kept.
+ */
+export function mergeSaveParams(
+  pending: NoteSaveFunctionParams | undefined,
+  next: NoteSaveFunctionParams,
+): NoteSaveFunctionParams {
+  if (!pending) {
+    return next
+  }
+
+  const nextSetsText = next.text != undefined
+  const customMutates = [pending.customMutate, next.customMutate].filter(
+    (mutate): mutate is (mutator: NoteMutator) => void => mutate != undefined,
+  )
+
+  return {
+    ...pending,
+    ...next,
+    title: next.title ?? pending.title,
+    text: next.text ?? pending.text,
+    previews: nextSetsText ? next.previews : pending.previews,
+    dontGeneratePreviews: nextSetsText ? next.dontGeneratePreviews : pending.dontGeneratePreviews,
+    isUserModified: pending.isUserModified || next.isUserModified,
+    customMutate:
+      customMutates.length > 0 ? (mutator) => customMutates.forEach((mutate) => mutate(mutator)) : undefined,
   }
 }
