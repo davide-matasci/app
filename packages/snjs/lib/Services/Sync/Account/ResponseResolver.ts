@@ -35,27 +35,36 @@ export class ServerSyncResponseResolver {
   ) {}
 
   public result(): DeltaEmit[] {
-    const emits: DeltaEmit[] = []
-
-    emits.push(this.processRetrievedPayloads())
-    emits.push(this.processSavedPayloads())
-    emits.push(this.processUuidConflictUnsavedPayloads())
-    emits.push(this.processDataConflictServerPayloads())
-    emits.push(this.processRejectedPayloads())
-
-    return emits
+    return this.steps().map((step) => step(this.baseCollection))
   }
 
-  private processSavedPayloads(): DeltaEmit {
-    const delta = new DeltaRemoteSaved(this.baseCollection, this.payloadSet.savedPayloads)
+  /**
+   * The same deltas, in the same order, each computed against the base collection it is
+   * given. The caller passes the current local state right before applying each one, so
+   * an edit saved while the response was being decrypted or an earlier step persisted is
+   * seen (and kept dirty) instead of being overwritten by a result computed from an older
+   * snapshot.
+   */
+  public steps(): ((base: ImmutablePayloadCollection<FullyFormedPayloadInterface>) => DeltaEmit)[] {
+    return [
+      (base) => this.processRetrievedPayloads(base),
+      (base) => this.processSavedPayloads(base),
+      (base) => this.processUuidConflictUnsavedPayloads(base),
+      (base) => this.processDataConflictServerPayloads(base),
+      (base) => this.processRejectedPayloads(base),
+    ]
+  }
+
+  private processSavedPayloads(base: ImmutablePayloadCollection<FullyFormedPayloadInterface>): DeltaEmit {
+    const delta = new DeltaRemoteSaved(base, this.payloadSet.savedPayloads)
 
     return delta.result()
   }
 
-  private processRetrievedPayloads(): DeltaEmit {
+  private processRetrievedPayloads(base: ImmutablePayloadCollection<FullyFormedPayloadInterface>): DeltaEmit {
     const collection = ImmutablePayloadCollection.WithPayloads(this.payloadSet.retrievedPayloads)
 
-    const delta = new DeltaRemoteRetrieved(this.baseCollection, collection, this.payloadsSavedOrSaving, this.historyMap)
+    const delta = new DeltaRemoteRetrieved(base, collection, this.payloadsSavedOrSaving, this.historyMap)
 
     return delta.result()
   }
@@ -66,9 +75,9 @@ export class ServerSyncResponseResolver {
     return results as T[]
   }
 
-  private processDataConflictServerPayloads(): DeltaEmit {
+  private processDataConflictServerPayloads(base: ImmutablePayloadCollection<FullyFormedPayloadInterface>): DeltaEmit {
     const delta = new DeltaRemoteDataConflicts(
-      this.baseCollection,
+      base,
       this.getConflictsForType(ConflictType.ConflictingData),
       this.historyMap,
     )
@@ -76,13 +85,13 @@ export class ServerSyncResponseResolver {
     return delta.result()
   }
 
-  private processUuidConflictUnsavedPayloads(): DeltaEmit {
-    const delta = new DeltaRemoteUuidConflicts(this.baseCollection, this.getConflictsForType(ConflictType.UuidConflict))
+  private processUuidConflictUnsavedPayloads(base: ImmutablePayloadCollection<FullyFormedPayloadInterface>): DeltaEmit {
+    const delta = new DeltaRemoteUuidConflicts(base, this.getConflictsForType(ConflictType.UuidConflict))
 
     return delta.result()
   }
 
-  private processRejectedPayloads(): DeltaEmit {
+  private processRejectedPayloads(base: ImmutablePayloadCollection<FullyFormedPayloadInterface>): DeltaEmit {
     const conflicts = [
       ...this.getConflictsForType(ConflictType.ContentTypeError),
       ...this.getConflictsForType(ConflictType.ContentError),
@@ -95,7 +104,7 @@ export class ServerSyncResponseResolver {
       ...this.getConflictsForType(ConflictType.InvalidServerItem),
     ]
 
-    const delta = new DeltaRemoteRejected(this.baseCollection, conflicts)
+    const delta = new DeltaRemoteRejected(base, conflicts)
     const result = delta.result()
     return result
   }

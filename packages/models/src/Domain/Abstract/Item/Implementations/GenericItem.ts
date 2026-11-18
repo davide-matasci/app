@@ -158,6 +158,15 @@ export abstract class GenericItem<P extends PayloadInterface = PayloadInterface>
       if (this.payload.source === PayloadSource.FileImport) {
         return ConflictStrategy.KeepBase
       }
+      /**
+       * Deleted elsewhere while this device has changes the server never accepted
+       * (edited offline, or restored from the trash): apply the deletion, but keep
+       * those changes as a conflict copy instead of discarding them. A local item
+       * without unsynced changes (e.g. out-of-sync repair) just takes the deletion.
+       */
+      if (this.dirty && isDecryptedItem(this)) {
+        return ConflictStrategy.DuplicateBaseKeepApply
+      }
       return ConflictStrategy.KeepApply
     }
 

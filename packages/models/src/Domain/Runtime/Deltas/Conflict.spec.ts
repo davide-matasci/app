@@ -3,11 +3,13 @@ import { FillItemContent } from '../../Abstract/Content/ItemContent'
 import { ConflictStrategy } from '../../Abstract/Item'
 import {
   DecryptedPayload,
+  DeletedPayload,
   EncryptedPayload,
   FullyFormedPayloadInterface,
   PayloadTimestampDefaults,
 } from '../../Abstract/Payload'
 import { ItemsKeyContent } from '../../Syncable/ItemsKey/ItemsKeyInterface'
+import { NoteContent } from '../../Syncable/Note/NoteContent'
 import { ImmutablePayloadCollection } from '../Collection/Payload/ImmutablePayloadCollection'
 import { PayloadCollection } from '../Collection/Payload/PayloadCollection'
 import { HistoryMap } from '../History'
@@ -47,6 +49,41 @@ describe('conflict delta', () => {
       updated_at_timestamp: timestamp,
     })
   }
+
+  const createNote = (uuid: string, dirty: boolean) => {
+    return new DecryptedPayload({
+      uuid: uuid,
+      content_type: ContentType.TYPES.Note,
+      content: FillItemContent<NoteContent>({ title: 'Edited offline', text: 'Unsynced changes' }),
+      dirty: dirty,
+      ...PayloadTimestampDefaults(),
+    })
+  }
+
+  const createDeletedNote = (uuid: string) => {
+    return new DeletedPayload({
+      uuid: uuid,
+      content_type: ContentType.TYPES.Note,
+      content: undefined,
+      deleted: true,
+      ...PayloadTimestampDefaults(),
+      updated_at_timestamp: 2,
+    })
+  }
+
+  it('if apply was deleted elsewhere while base has unsynced changes, should keep them as a conflict copy', () => {
+    const basePayload = createNote('123', true)
+    const delta = new ConflictDelta(createBaseCollection(basePayload), basePayload, createDeletedNote('123'), historyMap)
+
+    expect(delta.getConflictStrategy()).toBe(ConflictStrategy.DuplicateBaseKeepApply)
+  })
+
+  it('if apply was deleted and base has no unsynced changes, should just keep the deletion', () => {
+    const basePayload = createNote('123', false)
+    const delta = new ConflictDelta(createBaseCollection(basePayload), basePayload, createDeletedNote('123'), historyMap)
+
+    expect(delta.getConflictStrategy()).toBe(ConflictStrategy.KeepApply)
+  })
 
   it('when apply is an items key, logic should be diverted to items key delta', () => {
     const basePayload = createDecryptedItemsKey('123', 'secret')
