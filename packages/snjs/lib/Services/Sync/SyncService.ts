@@ -1110,9 +1110,13 @@ export class SyncService
       resolver['payloadSet'],
     )
 
-    const emits = resolver.result()
-
-    for (const emit of emits) {
+    /**
+     * Each step is computed against the current local state, not the snapshot taken above:
+     * decryption and each step's persist are async, and a note edit saved meanwhile must not
+     * be replaced by older content (or marked clean) by a result computed earlier.
+     */
+    for (const step of resolver.steps()) {
+      const emit = step(this.payloadManager.getMasterCollection())
       const payloadsToPersist = await this.payloadManager.emitDeltaEmit(emit)
 
       await this.persistPayloads(payloadsToPersist)
