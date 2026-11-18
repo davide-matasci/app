@@ -1,0 +1,61 @@
+name: Fork Web (GitHub Pages)
+
+# Personal-fork build: compiles the web app and publishes it to this
+# repository's GitHub Pages site. Requires Settings -> Pages -> Source set to
+# "GitHub Actions".
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fork-web-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Never runs in the upstream repository.
+    if: github.repository != 'standardnotes/app'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Build
+        run: yarn build:web
+      - name: Adapt the build to the Pages URL
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          APP_NAME: ${{ vars.WEB_APP_NAME || 'Notes Fork' }}
+        run: node scripts/fork-pages-prepare.mjs packages/web/dist
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

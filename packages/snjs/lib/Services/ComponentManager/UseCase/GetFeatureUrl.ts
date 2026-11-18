@@ -76,7 +76,12 @@ export class GetFeatureUrl {
       const baseUrlRequiredForThemesInsideEditors = window.location.href.split('/index.html')[0]
       return `${baseUrlRequiredForThemesInsideEditors}/web-src/components/assets/${identifier}/${index_path}`
     } else {
-      const baseUrlRequiredForThemesInsideEditors = window.location.origin
+      // Resolve against the document base rather than the origin, so the web app also works when it is
+      // hosted under a sub-path (e.g. https://user.github.io/app/). At the root this equals the origin.
+      const baseUri = typeof document !== 'undefined' ? document.baseURI : undefined
+      const baseUrlRequiredForThemesInsideEditors = baseUri
+        ? new URL('.', baseUri).href.replace(/\/$/, '')
+        : window.location.origin
       return `${baseUrlRequiredForThemesInsideEditors}/components/assets/${identifier}/${index_path}`
     }
   }

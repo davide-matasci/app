@@ -17,7 +17,9 @@ function isFileProtocol(): boolean {
 /** Desktop serves web from `web/`; the mobile shell serves the same dist under `web-src/`. */
 function webLocalesBasePath(): string {
   if (!isFileProtocol()) {
-    return LOCALES_BASE_PATH
+    // Relative, so it resolves against the document's <base href> rather than the domain root. This keeps
+    // the web app working when it is hosted under a sub-path; at the root it is the same URL as before.
+    return LOCALES_BASE_PATH.replace(/^\//, '')
   }
 
   return isDesktopApplication() ? 'web/locales' : 'web-src/locales'
