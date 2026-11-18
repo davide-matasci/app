@@ -5,8 +5,9 @@ import Modal, { ModalAction } from '@/Components/Modal/Modal'
 import Spinner from '@/Components/Spinner/Spinner'
 import { Platform, SmartViewDefaultIconName, VectorIconNameOrEmoji } from '@standardnotes/snjs'
 import { observer } from 'mobx-react-lite'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { EditSmartViewModalController } from './EditSmartViewModalController'
+import CompoundPredicateBuilder from '@/Components/SmartViewBuilder/CompoundPredicateBuilder'
 import { c } from 'ttag'
 
 type Props = {
@@ -15,24 +16,10 @@ type Props = {
 }
 
 const EditSmartViewModal = ({ controller, platform }: Props) => {
-  const {
-    view,
-    title,
-    setTitle,
-    predicateJson,
-    setPredicateJson,
-    isPredicateJsonValid,
-    setIsPredicateJsonValid,
-    icon,
-    setIcon,
-    save,
-    isSaving,
-    closeDialog,
-    deleteView,
-  } = controller
+  const { view, title, setTitle, predicateController, icon, setIcon, save, isSaving, closeDialog, deleteView } =
+    controller
 
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const predicateJsonInputRef = useRef<HTMLTextAreaElement>(null)
 
   const [shouldShowIconPicker, setShouldShowIconPicker] = useState(false)
   const iconPickerButtonRef = useRef<HTMLButtonElement>(null)
@@ -49,16 +36,6 @@ const EditSmartViewModal = ({ controller, platform }: Props) => {
 
     void save()
   }, [save, title.length])
-
-  useEffect(() => {
-    if (!predicateJsonInputRef.current) {
-      return
-    }
-
-    if (isPredicateJsonValid === false) {
-      predicateJsonInputRef.current.focus()
-    }
-  }, [isPredicateJsonValid])
 
   const modalActions = useMemo(
     (): ModalAction[] => [
@@ -78,12 +55,12 @@ const EditSmartViewModal = ({ controller, platform }: Props) => {
       {
         label: isSaving ? <Spinner className="h-4.5 w-4.5" /> : c('B6.Preferences.General.Action').t`Save`,
         onClick: saveSmartView,
-        disabled: isSaving,
+        disabled: isSaving || predicateController.incompleteConditionCount > 0,
         type: 'primary',
         mobileSlot: 'right',
       },
     ],
-    [closeDialog, deleteView, isSaving, saveSmartView],
+    [closeDialog, deleteView, isSaving, saveSmartView, predicateController.incompleteConditionCount],
   )
 
   if (!view) {
@@ -142,25 +119,14 @@ const EditSmartViewModal = ({ controller, platform }: Props) => {
               </div>
             </Popover>
           </div>
-          <div className="flex flex-grow flex-col gap-2.5">
-            <div className="text-sm font-semibold">{c('B6.Preferences.General.Label').t`Predicate:`}</div>
-            <div className="flex flex-grow flex-col overflow-hidden rounded-md border border-border">
-              <textarea
-                className="h-full min-h-[10rem] w-full flex-grow resize-none bg-default px-2.5 py-1.5 font-mono text-sm md:translucent-ui:bg-transparent"
-                value={predicateJson}
-                onChange={(event) => {
-                  setPredicateJson(event.target.value)
-                  setIsPredicateJsonValid(true)
-                }}
-                spellCheck={false}
-                ref={predicateJsonInputRef}
-              />
-              {!isPredicateJsonValid && (
-                <div className="border-t border-border px-2.5 py-1.5 text-sm text-danger">
-                  {c('B6.Preferences.General.Info').t`Invalid JSON. Double check your entry and try again.`}
-                </div>
-              )}
-            </div>
+          <div className="flex flex-col gap-2.5">
+            <div className="text-sm font-semibold">{c('B6.Preferences.General.Label').t`Conditions:`}</div>
+            <CompoundPredicateBuilder controller={predicateController} />
+            {predicateController.incompleteConditionCount > 0 && (
+              <div className="text-sm text-danger">
+                {c('B6.Preferences.General.Info').t`Pick a tag for each tag condition to save.`}
+              </div>
+            )}
           </div>
         </div>
       </div>

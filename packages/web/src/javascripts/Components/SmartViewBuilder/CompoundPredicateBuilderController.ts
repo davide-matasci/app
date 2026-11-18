@@ -1,6 +1,6 @@
 import { NativeFeatureIdentifier } from '@standardnotes/features'
 import { NoteType, PredicateJsonForm } from '@standardnotes/snjs'
-import { action, makeObservable, observable, toJS } from 'mobx'
+import { action, computed, makeObservable, observable, toJS } from 'mobx'
 import { PredicateKeypath } from './PredicateKeypaths'
 import {
   Condition,
@@ -25,6 +25,7 @@ export class CompoundPredicateBuilderController {
   constructor() {
     makeObservable(this, {
       root: observable,
+      incompleteConditionCount: computed,
       loadFromJson: action,
       resetState: action,
       setMatch: action,
@@ -47,6 +48,22 @@ export class CompoundPredicateBuilderController {
 
   toJson(): PredicateJsonForm {
     return conditionTreeToPredicate(toJS(this.root))
+  }
+
+  /** Conditions that can't be saved as they are (a tag condition with no tag picked). */
+  get incompleteConditionCount(): number {
+    const count = (group: ConditionGroup): number =>
+      group.children.reduce((total, child) => {
+        if (child.type === 'group') {
+          return total + count(child)
+        }
+        const isTagMissing =
+          child.type === 'condition' &&
+          child.value.kind === 'tag' &&
+          !('uuid' in child.value.tag ? child.value.tag.uuid : child.value.tag.title)
+        return total + (isTagMissing ? 1 : 0)
+      }, 0)
+    return count(this.root)
   }
 
   setMatch = (group: ConditionGroup, match: GroupMatch) => {

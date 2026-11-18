@@ -1,11 +1,6 @@
 import { WebApplication } from '@/Application/WebApplication'
 import { CompoundPredicateBuilderController } from '@/Components/SmartViewBuilder/CompoundPredicateBuilderController'
-import {
-  predicateFromJson,
-  PredicateJsonForm,
-  SmartViewDefaultIconName,
-  VectorIconNameOrEmoji,
-} from '@standardnotes/snjs'
+import { predicateFromJson, SmartViewDefaultIconName, VectorIconNameOrEmoji } from '@standardnotes/snjs'
 import { action, makeObservable, observable } from 'mobx'
 
 export class AddSmartViewModalController {
@@ -17,9 +12,6 @@ export class AddSmartViewModalController {
   icon: VectorIconNameOrEmoji = SmartViewDefaultIconName
 
   predicateController = new CompoundPredicateBuilderController()
-
-  customPredicateJson: string | undefined = undefined
-  isCustomJsonValidPredicate: boolean | undefined = undefined
 
   constructor(private application: WebApplication) {
     makeObservable(this, {
@@ -34,11 +26,6 @@ export class AddSmartViewModalController {
 
       icon: observable,
       setIcon: action,
-
-      customPredicateJson: observable,
-      isCustomJsonValidPredicate: observable,
-      setCustomPredicateJson: action,
-      setIsCustomJsonValidPredicate: action,
     })
   }
 
@@ -58,37 +45,23 @@ export class AddSmartViewModalController {
     this.icon = icon
   }
 
-  setCustomPredicateJson = (customPredicateJson: string) => {
-    this.customPredicateJson = customPredicateJson
-  }
-
-  setIsCustomJsonValidPredicate = (isCustomJsonValidPredicate: boolean | undefined) => {
-    this.isCustomJsonValidPredicate = isCustomJsonValidPredicate
-  }
-
   closeModal = () => {
     this.setIsAddingSmartView(false)
     this.setTitle('')
     this.setIcon('')
     this.setIsSaving(false)
     this.predicateController.resetState()
-    this.setCustomPredicateJson('')
-    this.setIsCustomJsonValidPredicate(undefined)
   }
 
   saveCurrentSmartView = async () => {
     this.setIsSaving(true)
 
-    if (!this.title) {
+    if (!this.title || this.predicateController.incompleteConditionCount > 0) {
       this.setIsSaving(false)
       return
     }
 
-    const predicateJson =
-      this.customPredicateJson && this.isCustomJsonValidPredicate
-        ? JSON.parse(this.customPredicateJson)
-        : this.predicateController.toJson()
-    const predicate = predicateFromJson(predicateJson as PredicateJsonForm)
+    const predicate = predicateFromJson(this.predicateController.toJson())
 
     await this.application.mutator.createSmartView({
       title: this.title,
@@ -99,27 +72,5 @@ export class AddSmartViewModalController {
 
     this.setIsSaving(false)
     this.closeModal()
-  }
-
-  validateAndPrettifyCustomPredicate = () => {
-    if (!this.customPredicateJson) {
-      this.setIsCustomJsonValidPredicate(false)
-      return
-    }
-
-    try {
-      const parsedPredicate: PredicateJsonForm = JSON.parse(this.customPredicateJson)
-      const predicate = predicateFromJson(parsedPredicate)
-
-      if (predicate) {
-        this.setCustomPredicateJson(JSON.stringify(parsedPredicate, null, 2))
-        this.setIsCustomJsonValidPredicate(true)
-      } else {
-        this.setIsCustomJsonValidPredicate(false)
-      }
-    } catch {
-      this.setIsCustomJsonValidPredicate(false)
-      return
-    }
   }
 }

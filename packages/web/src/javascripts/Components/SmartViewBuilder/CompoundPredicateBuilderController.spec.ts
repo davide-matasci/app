@@ -49,4 +49,18 @@ describe('CompoundPredicateBuilderController', () => {
       value: [{ keypath: 'userModifiedDate', operator: '>', value: '7.days.ago' }],
     })
   })
+
+  it('counts tag conditions without a tag as incomplete, until a tag is picked', () => {
+    const controller = new CompoundPredicateBuilderController()
+    const condition = controller.root.children[0]
+    if (condition.type !== 'condition') {
+      throw new Error('expected a condition')
+    }
+
+    controller.setField(condition, 'tags')
+    expect(controller.incompleteConditionCount).toBe(1)
+
+    controller.setValue(condition, { kind: 'tag', tag: { uuid: 'tag-work' } })
+    expect(controller.incompleteConditionCount).toBe(0)
+  })
 })
