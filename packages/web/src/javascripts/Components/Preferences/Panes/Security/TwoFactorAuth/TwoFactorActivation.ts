@@ -53,7 +53,10 @@ export class TwoFactorActivation {
   }
 
   get qrCode(): string {
-    return `otpauth://totp/2FA?secret=${this._secretKey}&issuer=Standard%20Notes&label=${this.email}`
+    /** Encoded: a username can contain spaces, & or #, which would break the URI. */
+    return `otpauth://totp/2FA?secret=${this._secretKey}&issuer=Standard%20Notes&label=${encodeURIComponent(
+      this.email,
+    )}`
   }
 
   cancelActivation(): void {
