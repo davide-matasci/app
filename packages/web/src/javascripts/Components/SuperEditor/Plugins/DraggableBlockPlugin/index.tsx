@@ -7,21 +7,8 @@
  */
 import { $createListNode, $isListNode } from '@lexical/list'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { eventFiles } from '@lexical/rich-text'
-import { mergeRegister } from '@lexical/utils'
-import {
-  $getNearestNodeFromDOMNode,
-  $getNodeByKey,
-  $getRoot,
-  COMMAND_PRIORITY_HIGH,
-  COMMAND_PRIORITY_LOW,
-  DRAGOVER_COMMAND,
-  DRAGEND_COMMAND,
-  DROP_COMMAND,
-  LexicalEditor,
-  LexicalNode,
-} from 'lexical'
-import { DragEvent as ReactDragEvent, TouchEvent, useCallback, useEffect, useRef, useState } from 'react'
+import { $getNearestNodeFromDOMNode, $getNodeByKey, $getRoot, LexicalEditor, LexicalNode } from 'lexical'
+import { PointerEvent as ReactPointerEvent, TouchEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BlockIcon } from '@standardnotes/icons'
 
@@ -32,8 +19,6 @@ import { ContainsPointReturn, Rect } from '../../Lexical/Utils/rect'
 const DRAGGABLE_BLOCK_MENU_LEFT_SPACE = -2
 const TARGET_LINE_HALF_HEIGHT = 2
 const DRAGGABLE_BLOCK_MENU_CLASSNAME = 'draggable-block-menu'
-const DRAG_DATA_FORMAT = 'application/x-lexical-drag-block'
-let draggedNodeKey = ''
 const TEXT_BOX_HORIZONTAL_PADDING = 24
 
 const Downward = 1
@@ -164,18 +149,6 @@ function setMenuPosition(targetElem: HTMLElement | null, floatingElem: HTMLEleme
   floatingElem.style.transform = `translate(${left}px, ${top}px)`
 }
 
-function setDragImage(dataTransfer: DataTransfer, draggableBlockElem: HTMLElement) {
-  const { transform } = draggableBlockElem.style
-
-  // Remove dragImage borders
-  draggableBlockElem.style.transform = 'translateZ(0)'
-  dataTransfer.setDragImage(draggableBlockElem, 0, 0)
-
-  setTimeout(() => {
-    draggableBlockElem.style.transform = transform
-  })
-}
-
 function setTargetLine(
   targetLineElem: HTMLElement,
   targetBlockElem: HTMLElement,
@@ -275,183 +248,117 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
     [],
   )
 
-  useEffect(() => {
-    function onDragover(event: DragEvent): boolean {
-      const [isFileTransfer] = eventFiles(event)
-      if (isFileTransfer) {
-        return false
-      }
-      const { pageY, target } = event
-      if (!isHTMLElement(target)) {
-        return false
-      }
-      if (!draggedNodeKey) {
-        return false
-      }
-      const targetBlockElem = getBlockElement(anchorElem, editor, new Point(event.pageX, pageY))
-      const targetLineElem = targetLineRef.current
-      if (targetBlockElem === null || targetLineElem === null) {
-        return false
-      }
-      setTargetLine(targetLineElem, targetBlockElem, pageY, anchorElem)
-      // Prevent default event to be able to trigger onDrop events
-      event.preventDefault()
-      return true
-    }
+  /**
+   * Dragging is done by hand with pointer events (mouse) and touch events, not with HTML5 drag and drop: Safari
+   * never starts an HTML5 drag from the handle, so blocks couldn't be moved there at all.
+   */
+  const isMouseDraggingRef = useRef(false)
 
-    function onDrop(event: DragEvent): boolean {
-      const [isFileTransfer] = eventFiles(event)
-      if (isFileTransfer) {
-        return false
-      }
-
-      const { target, dataTransfer, pageY } = event
-      if (!isHTMLElement(target)) {
-        return false
-      }
-
-      const dragData = dataTransfer?.getData(DRAG_DATA_FORMAT) || draggedNodeKey || ''
-      const draggedNode = $getNodeByKey(dragData)
-      if (!draggedNode) {
-        return false
-      }
-
-      const targetBlockElem = getBlockElement(anchorElem, editor, new Point(event.pageX, pageY))
-      if (!targetBlockElem) {
-        return false
-      }
-
-      const targetNode = $getNearestNodeFromDOMNode(targetBlockElem)
-      if (!targetNode) {
-        return false
-      }
-      if (targetNode === draggedNode) {
-        return true
-      }
-
-      insertDraggedNode(draggedNode, targetNode, targetBlockElem, event.pageY)
-
-      setDraggableBlockElem(null)
-
-      return true
-    }
-
-    function onDragEnd(): boolean {
-      hideTargetLine(targetLineRef.current)
-      draggedNodeKey = ''
-      return true
-    }
-
-    return mergeRegister(
-      editor.registerCommand(
-        DRAGOVER_COMMAND,
-        (event) => {
-          return onDragover(event)
-        },
-        COMMAND_PRIORITY_LOW,
-      ),
-      editor.registerCommand(
-        DRAGEND_COMMAND,
-        () => {
-          return onDragEnd()
-        },
-        COMMAND_PRIORITY_LOW,
-      ),
-      editor.registerCommand(
-        DROP_COMMAND,
-        (event) => {
-          return onDrop(event)
-        },
-        COMMAND_PRIORITY_HIGH,
-      ),
-    )
-  }, [anchorElem, editor, insertDraggedNode])
-
-  function onDragStart(event: ReactDragEvent<HTMLDivElement>): void {
-    const dataTransfer = event.dataTransfer
-    if (!dataTransfer || !draggableBlockElem) {
-      return
-    }
-    setDragImage(dataTransfer, draggableBlockElem)
-    let nodeKey = ''
-    editor.update(() => {
-      const node = $getNearestNodeFromDOMNode(draggableBlockElem)
-      if (node) {
-        nodeKey = node.getKey()
-      }
-    })
-    dataTransfer.setData(DRAG_DATA_FORMAT, nodeKey)
-    draggedNodeKey = nodeKey
-  }
-
-  function onDragEnd(): void {
-    hideTargetLine(targetLineRef.current)
-    draggedNodeKey = ''
-  }
-
-  function onTouchStart(): void {
+  function beginDrag(): boolean {
     if (!draggableBlockElem) {
-      return
+      return false
     }
-    editor.update(() => {
-      const node = $getNearestNodeFromDOMNode(draggableBlockElem)
-      if (!node) {
-        return
-      }
-      const nodeKey = node.getKey()
-      dragDataRef.current = nodeKey
-    })
+    const nodeKey = editor.read(() => $getNearestNodeFromDOMNode(draggableBlockElem)?.getKey())
+    dragDataRef.current = nodeKey ?? null
+    return !!nodeKey
   }
 
-  function onTouchMove(event: TouchEvent) {
-    const { pageX, pageY } = event.targetTouches[0]
+  function moveDrag(x: number, y: number): void {
     const rootElement = editor.getRootElement()
     if (rootElement) {
       const { top, bottom } = rootElement.getBoundingClientRect()
       const scrollOffset = 20
-      if (pageY - top < scrollOffset) {
+      if (y - top < scrollOffset) {
         rootElement.scrollTop -= scrollOffset
-      } else if (bottom - pageY < scrollOffset) {
+      } else if (bottom - y < scrollOffset) {
         rootElement.scrollTop += scrollOffset
       }
     }
-    const targetBlockElem = getBlockElement(anchorElem, editor, new Point(pageX, pageY))
+    const targetBlockElem = getBlockElement(anchorElem, editor, new Point(x, y))
     const targetLineElem = targetLineRef.current
     if (targetBlockElem === null || targetLineElem === null) {
       return
     }
-    setTargetLine(targetLineElem, targetBlockElem, pageY, anchorElem)
+    setTargetLine(targetLineElem, targetBlockElem, y, anchorElem)
+  }
+
+  function endDrag(drop?: { x: number; y: number }): void {
+    hideTargetLine(targetLineRef.current)
+
+    const dragData = dragDataRef.current
+    dragDataRef.current = null
+
+    const targetBlockElem = drop ? getBlockElement(anchorElem, editor, new Point(drop.x, drop.y)) : null
+
+    if (drop && dragData && targetBlockElem) {
+      editor.update(() => {
+        const draggedNode = $getNodeByKey(dragData)
+        if (!draggedNode) {
+          return
+        }
+
+        const targetNode = $getNearestNodeFromDOMNode(targetBlockElem)
+
+        if (!targetNode) {
+          return
+        }
+        if (targetNode === draggedNode) {
+          return
+        }
+
+        insertDraggedNode(draggedNode, targetNode, targetBlockElem, drop.y)
+      })
+    }
+
+    setDraggableBlockElem(null)
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (event.pointerType === 'touch' || event.button !== 0) {
+      return
+    }
+    if (!beginDrag()) {
+      return
+    }
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    isMouseDraggingRef.current = true
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (isMouseDraggingRef.current) {
+      moveDrag(event.clientX, event.clientY)
+    }
+  }
+
+  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!isMouseDraggingRef.current) {
+      return
+    }
+    isMouseDraggingRef.current = false
+    endDrag({ x: event.clientX, y: event.clientY })
+  }
+
+  function onPointerCancel(): void {
+    if (!isMouseDraggingRef.current) {
+      return
+    }
+    isMouseDraggingRef.current = false
+    endDrag()
+  }
+
+  function onTouchStart(): void {
+    beginDrag()
+  }
+
+  function onTouchMove(event: TouchEvent) {
+    const { pageX, pageY } = event.targetTouches[0]
+    moveDrag(pageX, pageY)
   }
 
   function onTouchEnd(event: TouchEvent): void {
-    hideTargetLine(targetLineRef.current)
-
-    editor.update(() => {
-      const { pageX, pageY } = event.changedTouches[0]
-
-      const dragData = dragDataRef.current || ''
-      const draggedNode = $getNodeByKey(dragData)
-      if (!draggedNode) {
-        return
-      }
-
-      const targetBlockElem = getBlockElement(anchorElem, editor, new Point(pageX, pageY))
-      if (!targetBlockElem) {
-        return
-      }
-      const targetNode = $getNearestNodeFromDOMNode(targetBlockElem)
-
-      if (!targetNode) {
-        return
-      }
-      if (targetNode === draggedNode) {
-        return
-      }
-
-      insertDraggedNode(draggedNode, targetNode, targetBlockElem, pageY)
-    })
-
-    setDraggableBlockElem(null)
+    const { pageX, pageY } = event.changedTouches[0]
+    endDrag({ x: pageX, y: pageY })
   }
 
   return createPortal(
@@ -459,9 +366,10 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
       <div
         className="icon draggable-block-menu"
         ref={menuRef}
-        draggable={true}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
