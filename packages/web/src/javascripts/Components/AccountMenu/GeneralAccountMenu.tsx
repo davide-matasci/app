@@ -31,7 +31,9 @@ const GeneralAccountMenu: FunctionComponent<Props> = ({ setMenuPane, closeMenu, 
 
   const [isSyncingInProgress, setIsSyncingInProgress] = useState(false)
 
-  const lastSyncDate = formatItemDate(application.sync.getLastSyncDate() as Date)
+  /** Without a date the formatter would show the current time, as if a sync had just completed. */
+  const lastSyncedAt = application.sync.getLastSyncDate()
+  const lastSyncDate = lastSyncedAt ? formatItemDate(lastSyncedAt) : c('B1.Account.Session.Info').t`Not yet`
 
   const doSynchronization = useCallback(async () => {
     setIsSyncingInProgress(true)
