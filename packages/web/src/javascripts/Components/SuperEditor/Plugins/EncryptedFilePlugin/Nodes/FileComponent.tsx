@@ -170,7 +170,9 @@ function FileComponent({
   if (!file) {
     return (
       <BlockWithAlignableContents className={className} format={format} nodeKey={nodeKey}>
-        <div>{c('B4.Notes.EditingUI.Label').jt`Unable to find file ${fileUuid}`}</div>
+        <div className="text-passive-1" title={fileUuid}>
+          {c('B4.Notes.EditingUI.Label').t`This file was deleted.`}
+        </div>
       </BlockWithAlignableContents>
     )
   }

@@ -188,7 +188,33 @@ export class LinkingController extends AbstractViewController implements Interna
       console.error(error)
     }
 
-    void this.sync.sync()
+    void this.syncShowingStatusOnOpenNote([item, itemToUnlink])
+  }
+
+  /**
+   * A link is stored on one side (the tag, or the linking note), so the note open in
+   * the editor may not change at all and its save status would not move. Show it for
+   * this sync whenever the open note is one side of the link.
+   */
+  private syncShowingStatusOnOpenNote = async (items: LinkableItem[]) => {
+    const controller = this.itemControllerGroup.activeItemViewController
+    const isOpenNoteInvolved =
+      controller instanceof NoteViewController && items.some((item) => item.uuid === controller.item.uuid)
+
+    if (!isOpenNoteInvolved) {
+      await this.sync.sync()
+      return
+    }
+
+    controller.showSavingStatus()
+    await this.sync.sync()
+
+    const isStillUnsynced = items.some((item) => this.items.findItem(item.uuid)?.dirty)
+    if (isStillUnsynced) {
+      controller.showErrorSyncStatus()
+    } else {
+      controller.showAllChangesSavedStatus()
+    }
   }
 
   /**
@@ -304,7 +330,7 @@ export class LinkingController extends AbstractViewController implements Interna
     }
 
     if (sync) {
-      void this.sync.sync()
+      void this.syncShowingStatusOnOpenNote([item, itemToLink])
     }
   }
 
@@ -363,7 +389,7 @@ export class LinkingController extends AbstractViewController implements Interna
     }
 
     if (sync) {
-      this.sync.sync().catch(console.error)
+      this.syncShowingStatusOnOpenNote([tag, item]).catch(console.error)
     }
   }
 }

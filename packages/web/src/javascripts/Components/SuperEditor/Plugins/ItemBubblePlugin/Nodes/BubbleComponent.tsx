@@ -8,6 +8,7 @@ import { useResponsiveAppPane } from '@/Components/Panes/ResponsivePaneProvider'
 import { LexicalNode } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { c } from 'ttag'
+import Icon from '@/Components/Icon/Icon'
 
 export type BubbleComponentProps = Readonly<{
   itemUuid: string
@@ -38,7 +39,26 @@ export function BubbleComponent({ itemUuid, node }: BubbleComponentProps) {
   }, [linkingController, node, editor])
 
   if (!item) {
-    return <div>{c('B4.Notes.EditingUI.Info').jt`Unable to find item ${itemUuid}`}</div>
+    /** The item was deleted for good: an inline, removable placeholder, not a block with a raw uuid. */
+    const label = c('B4.Notes.EditingUI.Info').t`Deleted item`
+    return (
+      <span
+        className="mx-0.5 inline-flex h-6 items-center rounded bg-passive-4-opacity-variant py-2 pl-1 pr-2 align-middle text-sm text-passive-1 lg:text-xs"
+        title={c('B4.Notes.EditingUI.Info').t`This item no longer exists`}
+      >
+        <Icon type="trash" className="mr-1 flex-shrink-0" size="small" />
+        <span className="line-through">{label}</span>
+        {editor.isEditable() && (
+          <button
+            className="-mr-1 ml-2 inline-flex cursor-pointer border-0 bg-transparent p-0"
+            onClick={unlinkPressed}
+            aria-label={c('B4.Notes.EditingUI.Action').t`Remove`}
+          >
+            <Icon type="close" className="text-neutral hover:text-info" size="small" />
+          </button>
+        )}
+      </span>
+    )
   }
 
   const link = createLinkFromItem(item, 'linked')
