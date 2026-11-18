@@ -89,6 +89,101 @@ platform :ios do
     deploy_ios 'StandardNotes', true
   end
 
+  # --- Personal fork build -------------------------------------------------
+  # Builds the app under your own bundle ID / Apple team and uploads it to
+  # TestFlight. Nothing account-specific is committed: identifiers are swapped
+  # in at build time from environment variables (see fork.ios.testflight.yml).
+  def fork_rebrand(bundle_id, team_id, display_name)
+    root = File.expand_path('..', __dir__)
+    upstream_bundle_id = 'com.standardnotes.standardnotes'
+    upstream_team_id = 'HKF9BXSN95'
+    files = [
+      'ios/StandardNotes.xcodeproj/project.pbxproj',
+      'ios/Share To SN/ShareViewController.swift',
+      'ios/Share To SN/Share To SNRelease.entitlements',
+      'src/ReceivedSharedItemsHandler.ts'
+    ]
+    files.each do |relative|
+      path = File.join(root, relative)
+      next unless File.exist?(path)
+
+      content = File.read(path)
+      updated = content.gsub(upstream_bundle_id, bundle_id).gsub(upstream_team_id, team_id)
+      File.write(path, updated) if updated != content
+    end
+
+    plist = File.join(root, 'ios/StandardNotes/Info.plist')
+    content = File.read(plist)
+    updated = content.sub(
+      %r{(<key>CFBundleDisplayName</key>\s*<string>)[^<]*(</string>)},
+      "\\1#{display_name}\\2"
+    )
+    File.write(plist, updated)
+  end
+
+  desc 'Personal fork: build with your own signing and upload to TestFlight'
+  lane :fork_testflight do
+    bundle_id = ENV.fetch('IOS_BUNDLE_ID')
+    display_name = ENV['IOS_DISPLAY_NAME'].to_s.empty? ? 'Notes Fork' : ENV['IOS_DISPLAY_NAME']
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch('APPSTORE_CONNECT_KEY_ID'),
+      issuer_id: ENV.fetch('APPSTORE_CONNECT_KEY_ISSUER_ID'),
+      key_filepath: 'ios/Authkey.p8',
+      in_house: false
+    )
+
+    setup_project
+
+    # Creates the distribution certificate + App Store profile on first run
+    # and stores them encrypted in your private certificates repo; later runs
+    # reuse them.
+    match(
+      type: 'appstore',
+      app_identifier: [bundle_id],
+      api_key: api_key,
+      git_url: ENV.fetch('MATCH_CERTIFICATES_URL'),
+      git_basic_authorization: ENV.fetch('MATCH_GIT_BASIC_AUTHORIZATION'),
+      keychain_name: 'snkeychain',
+      keychain_password: ENV.fetch('MATCH_PASSWORD'),
+      readonly: false
+    )
+
+    team_id = ENV["sigh_#{bundle_id}_appstore_team-id"].to_s
+    team_id = ENV['APPLE_TEAM_ID'].to_s if team_id.empty?
+    UI.user_error!('Could not determine the Apple team ID; set the APPLE_TEAM_ID secret') if team_id.empty?
+
+    fork_rebrand(bundle_id, team_id, display_name)
+
+    increment_version_number(
+      version_number: ENV['PACKAGE_VERSION'],
+      xcodeproj: 'ios/StandardNotes.xcodeproj'
+    )
+    increment_build_number(
+      build_number: ENV['BUILD_NUMBER'],
+      xcodeproj: 'ios/StandardNotes.xcodeproj'
+    )
+    gym(
+      workspace: 'ios/StandardNotes.xcworkspace',
+      scheme: 'StandardNotes',
+      output_name: 'StandardNotes',
+      silent: true,
+      export_method: 'app-store',
+      export_options: {
+        provisioningProfiles: {
+          bundle_id => "match AppStore #{bundle_id}"
+        }
+      },
+      xcargs: 'DEBUG_INFORMATION_FORMAT=dwarf-with-dsym'
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: bundle_id,
+      skip_waiting_for_build_processing: true
+    )
+  end
+
   desc 'Setup iOS for running on CI'
   lane :setup do
     setup_project
