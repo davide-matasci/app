@@ -43,6 +43,8 @@ jobs:
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
           APP_NAME: ${{ vars.WEB_APP_NAME || 'Notes Fork' }}
+          # Optional: your self-hosted sync server (see selfhost/README.md).
+          SYNC_SERVER_URL: ${{ vars.SYNC_SERVER_URL }}
         run: node scripts/fork-pages-prepare.mjs packages/web/dist
       - name: Upload site
         uses: actions/upload-pages-artifact@v3

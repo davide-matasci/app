@@ -1,0 +1,89 @@
+# Personal-fork self-hosting stack for the Standard Notes sync server.
+# Based on docker-compose.example.yml from github.com/standardnotes/server,
+# plus Caddy for automatic HTTPS. See README.md in this folder.
+#
+# Only Caddy publishes ports (80/443). The server, database, cache and
+# localstack are reachable only inside the Docker network.
+
+services:
+  server:
+    image: standardnotes/server:${SERVER_IMAGE_TAG:-latest}
+    env_file: .env
+    container_name: server_self_hosted
+    restart: unless-stopped
+    expose:
+      - 3000 # API gateway (sync)
+      - 3104 # files server (attachments)
+    volumes:
+      - ./logs:/var/lib/server/logs
+      - ./uploads:/opt/server/packages/files/dist/uploads
+    depends_on:
+      - db
+      - cache
+      - localstack
+    networks:
+      - standardnotes_self_hosted
+
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: localstack_self_hosted
+    expose:
+      - 4566
+    restart: unless-stopped
+    environment:
+      - SERVICES=sns,sqs
+      - HOSTNAME_EXTERNAL=localstack
+      - LS_LOG=warn
+    volumes:
+      - ./localstack_bootstrap.sh:/etc/localstack/init/ready.d/localstack_bootstrap.sh
+    networks:
+      - standardnotes_self_hosted
+
+  db:
+    image: mysql:8
+    container_name: db_self_hosted
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-standard_notes_db}
+      - MYSQL_USER=${DB_USERNAME:-std_notes_user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
+    expose:
+      - 3306
+    restart: unless-stopped
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - standardnotes_self_hosted
+
+  cache:
+    image: redis:6.0-alpine
+    container_name: cache_self_hosted
+    volumes:
+      - ./data/redis/:/data
+    expose:
+      - 6379
+    restart: unless-stopped
+    networks:
+      - standardnotes_self_hosted
+
+  caddy:
+    image: caddy:2
+    container_name: caddy_self_hosted
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    environment:
+      - SYNC_DOMAIN=${SYNC_DOMAIN:?Set SYNC_DOMAIN in .env}
+      - FILES_DOMAIN=${FILES_DOMAIN:?Set FILES_DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+    depends_on:
+      - server
+    networks:
+      - standardnotes_self_hosted
+
+networks:
+  standardnotes_self_hosted:
+    name: standardnotes_self_hosted
