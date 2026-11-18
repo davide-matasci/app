@@ -76,14 +76,14 @@ export class FetchRequestHandler implements RequestHandlerInterface {
       const response = await this.handleFetchResponse<T>(fetchResponse)
 
       return response
-    } catch (error) {
+    } catch {
+      /** fetch() throws only when no response arrived at all (offline, DNS, server down). */
       return {
         status: HttpStatusCode.InternalServerError,
         headers: new Map<string, string | null>(),
         data: {
           error: {
-            message:
-              'message' in (error as { message: string }) ? (error as { message: string }).message : 'Unknown error',
+            message: 'server unavailable',
           },
         },
       }
@@ -144,7 +144,7 @@ export class FetchRequestHandler implements RequestHandlerInterface {
       if (!errorResponse.data) {
         errorResponse.data = {
           error: {
-            message: 'Unknown error',
+            message: `server responded with ${httpStatus}`,
           },
         }
       }
@@ -159,7 +159,7 @@ export class FetchRequestHandler implements RequestHandlerInterface {
 
       if (!errorResponse.data.error) {
         errorResponse.data.error = {
-          message: 'Unknown error',
+          message: `server responded with ${httpStatus}`,
         }
       }
 
