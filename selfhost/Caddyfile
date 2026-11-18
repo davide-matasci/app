@@ -1,0 +1,19 @@
+# HTTPS certificates are obtained automatically from Let's Encrypt.
+# The domains come from SYNC_DOMAIN and FILES_DOMAIN in .env.
+
+{$SYNC_DOMAIN} {
+	# Admin/internal endpoints are never needed by the apps; keep them off
+	# the internet.
+	@private path /admin* /internal*
+	respond @private 404
+
+	reverse_proxy server:3000
+}
+
+{$FILES_DOMAIN} {
+	# Attachments are uploaded in chunks; allow large request bodies.
+	request_body {
+		max_size 200MB
+	}
+	reverse_proxy server:3104
+}
