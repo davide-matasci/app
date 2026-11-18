@@ -35,9 +35,22 @@ export class GenerateSymmetricPayloadSignatureResultUseCase {
       plaintext: string
     },
   ): PersistentSignatureData {
-    const contentKeyHash = this.hashUseCase.execute(contentKeyParameters.plaintext, hashingKey)
-
     const contentHash = this.hashUseCase.execute(contentParameters.plaintext, hashingKey)
+
+    const verificationRequired = doesPayloadRequireSigning(payload)
+
+    /**
+     * Signatures only matter for shared vault items, which other people can edit. Verifying them on every other
+     * item (two signature checks per item, every time it's decrypted) was most of the decryption time at startup.
+     */
+    if (!verificationRequired) {
+      return {
+        required: false,
+        contentHash: contentHash,
+      }
+    }
+
+    const contentKeyHash = this.hashUseCase.execute(contentKeyParameters.plaintext, hashingKey)
 
     const contentKeyAdditionalData = this.parseBase64Usecase.execute<SymmetricItemAdditionalData>(
       contentKeyParameters.additionalData,
@@ -46,8 +59,6 @@ export class GenerateSymmetricPayloadSignatureResultUseCase {
     const contentAdditionalData = this.parseBase64Usecase.execute<SymmetricItemAdditionalData>(
       contentParameters.additionalData,
     )
-
-    const verificationRequired = doesPayloadRequireSigning(payload)
 
     if (!contentKeyAdditionalData.signingData || !contentAdditionalData.signingData) {
       if (verificationRequired) {

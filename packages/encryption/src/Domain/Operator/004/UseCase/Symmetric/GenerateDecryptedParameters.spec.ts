@@ -57,7 +57,7 @@ describe('generate decrypted parameters usecase', () => {
       signingKeyPair = crypto.sodiumCryptoSignSeedKeypair('seedling')
     })
 
-    it('should generate decrypted parameters', () => {
+    it('should skip signature verification for items outside shared vaults', () => {
       const encrypted = generateEncryptedParameters<EncryptedInputParameters>('foo')
 
       const result = usecase.execute(encrypted, itemsKey)
@@ -68,11 +68,6 @@ describe('generate decrypted parameters usecase', () => {
         signatureData: {
           required: false,
           contentHash: expect.any(String),
-          result: {
-            passes: true,
-            publicKey: signingKeyPair.publicKey,
-            signature: expect.any(String),
-          },
         },
       })
     })
