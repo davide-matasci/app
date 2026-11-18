@@ -68,7 +68,7 @@ export class ThemeManager extends AbstractUIService {
             if (this.components.isThemeActive(uiFeature)) {
               this.deactivateThemeInTheUI(uiFeature.uniqueIdentifier)
               setTimeout(() => {
-                this.activateTheme(uiFeature)
+                void this.activateTheme(uiFeature)
                 this.cacheThemeState().catch(console.error)
               }, 10)
             }
@@ -129,19 +129,18 @@ export class ThemeManager extends AbstractUIService {
     const featuresList = new ActiveThemeList(this.application.items, features)
     const uuidsList = new ActiveThemeList(this.application.items, uuids)
 
-    for (const active of this.themesActiveInTheUI.getList()) {
-      if (!featuresList.has(active) && !uuidsList.has(active)) {
-        this.deactivateThemeInTheUI(active)
-        hasChange = true
-      }
-    }
+    const outgoing = this.themesActiveInTheUI
+      .getList()
+      .filter((active) => !featuresList.has(active) && !uuidsList.has(active))
+
+    const incomingLoads: Promise<void>[] = []
 
     for (const feature of features) {
       if (!this.themesActiveInTheUI.has(feature)) {
         const theme = FindNativeTheme(feature.value)
         if (theme) {
           const uiFeature = new UIFeature<ThemeFeatureDescription>(theme)
-          this.activateTheme(uiFeature)
+          incomingLoads.push(this.activateTheme(uiFeature))
           hasChange = true
         }
       }
@@ -152,15 +151,38 @@ export class ThemeManager extends AbstractUIService {
         const theme = this.application.items.findItem<ComponentInterface>(uuid.value)
         if (theme) {
           const uiFeature = new UIFeature<ThemeFeatureDescription>(theme)
-          this.activateTheme(uiFeature)
+          incomingLoads.push(this.activateTheme(uiFeature))
           hasChange = true
         }
       }
     }
 
+    if (outgoing.length > 0) {
+      hasChange = true
+      /**
+       * Remove the previous theme only once the new one's stylesheet has loaded: removing
+       * it first showed the default theme while a not-yet-cached theme downloaded.
+       */
+      void Promise.all(incomingLoads).then(() => this.deactivateThemesNoLongerActive(outgoing))
+    }
+
     if (hasChange) {
       this.cacheThemeState().catch(console.error)
     }
+  }
+
+  /** Deactivates the given themes unless they were selected again in the meantime. */
+  private deactivateThemesNoLongerActive(themes: (NativeFeatureIdentifier | Uuid)[]) {
+    const { features, uuids } = this.components.getActiveThemesIdentifiers()
+    const featuresList = new ActiveThemeList(this.application.items, features)
+    const uuidsList = new ActiveThemeList(this.application.items, uuids)
+
+    for (const theme of themes) {
+      if (!featuresList.has(theme) && !uuidsList.has(theme)) {
+        this.deactivateThemeInTheUI(theme)
+      }
+    }
+    this.cacheThemeState().catch(console.error)
   }
 
   private async handleLocalPreferencesChangeEvent() {
@@ -212,7 +234,7 @@ export class ThemeManager extends AbstractUIService {
 
     for (const theme of activeThemes) {
       if (!this.themesActiveInTheUI.has(theme.uniqueIdentifier)) {
-        this.activateTheme(theme)
+        void this.activateTheme(theme)
         hasChange = true
       }
     }
@@ -286,7 +308,7 @@ export class ThemeManager extends AbstractUIService {
   private async activateCachedThemes() {
     const cachedThemes = this.getCachedThemes()
     for (const theme of cachedThemes) {
-      this.activateTheme(theme, true)
+      void this.activateTheme(theme, true)
     }
   }
 
@@ -297,21 +319,22 @@ export class ThemeManager extends AbstractUIService {
     }
   }
 
-  private activateTheme(theme: UIFeature<ThemeFeatureDescription>, skipEntitlementCheck = false) {
+  /** Resolves once the theme's stylesheet has loaded (or failed to), or right away if not added. */
+  private activateTheme(theme: UIFeature<ThemeFeatureDescription>, skipEntitlementCheck = false): Promise<void> {
     if (this.themesActiveInTheUI.has(theme.uniqueIdentifier)) {
-      return
+      return Promise.resolve()
     }
 
     if (
       !skipEntitlementCheck &&
       this.application.features.getFeatureStatus(theme.uniqueIdentifier) !== FeatureStatus.Entitled
     ) {
-      return
+      return Promise.resolve()
     }
 
     const url = this.application.componentManager.urlForFeature(theme)
     if (!url) {
-      return
+      return Promise.resolve()
     }
 
     this.themesActiveInTheUI.add(theme.uniqueIdentifier)
@@ -322,7 +345,13 @@ export class ThemeManager extends AbstractUIService {
     link.rel = 'stylesheet'
     link.media = 'screen,print'
     link.id = theme.uniqueIdentifier.value
+
+    let resolveLoaded: () => void = () => undefined
+    const loaded = new Promise<void>((resolve) => (resolveLoaded = resolve))
+    link.onerror = () => resolveLoaded()
+
     link.onload = () => {
+      resolveLoaded()
       this.syncThemeColorMetadata()
 
       if (this.application.isNativeMobileWeb()) {
@@ -336,6 +365,8 @@ export class ThemeManager extends AbstractUIService {
       this.toggleTranslucentUIColors()
     }
     document.getElementsByTagName('head')[0].appendChild(link)
+
+    return loaded
   }
 
   private deactivateThemeInTheUI(id: NativeFeatureIdentifier | Uuid) {
