@@ -29,7 +29,7 @@ All of this can be done in a phone browser.
 1. Apps → **+** → New App. Platform iOS, any name, pick the bundle ID from
    step 1, SKU: anything.
 2. Users and Access → Integrations → App Store Connect API → generate a team
-   key with the **App Manager** role. Note the **Key ID** and **Issuer ID** and
+   key with the **Admin** role (it must be able to create the signing certificate). Note the **Key ID** and **Issuer ID** and
    download the `.p8` file (it can only be downloaded once).
 3. In the app's TestFlight tab, create an internal testing group and add
    yourself.
