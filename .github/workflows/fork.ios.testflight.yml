@@ -1,0 +1,91 @@
+name: Fork iOS TestFlight
+
+# Personal-fork build: signs the iOS app with YOUR Apple Developer account and
+# uploads it to TestFlight. Setup instructions: packages/mobile/FORK_TESTFLIGHT.md
+
+on:
+  workflow_dispatch:
+  schedule:
+    # TestFlight builds expire after 90 days; rebuild on the 1st of every month.
+    - cron: '17 3 1 * *'
+
+concurrency:
+  group: fork-ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    # Never runs in the upstream repository.
+    if: github.repository != 'standardnotes/app'
+    defaults:
+      run:
+        working-directory: packages/mobile
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || secrets.IOS_BUNDLE_ID }}
+      IOS_DISPLAY_NAME: ${{ vars.IOS_DISPLAY_NAME }}
+      MATCH_CERTIFICATES_REPO: ${{ vars.MATCH_CERTIFICATES_REPO || format('{0}/ios-certificates', github.repository_owner) }}
+    steps:
+      - name: Check configuration
+        env:
+          APPSTORE_CONNECT_KEY: ${{ secrets.APPSTORE_CONNECT_KEY }}
+          APPSTORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          APPSTORE_CONNECT_KEY_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ISSUER_ID }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_TOKEN: ${{ secrets.MATCH_GIT_TOKEN }}
+        working-directory: .
+        run: |
+          missing=0
+          for name in IOS_BUNDLE_ID APPSTORE_CONNECT_KEY APPSTORE_CONNECT_KEY_ID APPSTORE_CONNECT_KEY_ISSUER_ID MATCH_PASSWORD MATCH_GIT_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing repository secret: $name"
+              missing=1
+            fi
+          done
+          exit $missing
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      - name: Export version from package.json
+        run:
+          echo "PACKAGE_VERSION=$(grep '"version"' ../web/package.json | cut -d '"' -f 4 | cut -d "-" -f 1)" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: yarn install --immutable && yarn install:pods
+      - run: yarn build:mobile
+      - name: Export Apple App Store Connect API key
+        env:
+          APPSTORE_CONNECT_KEY: ${{ secrets.APPSTORE_CONNECT_KEY }}
+        run: printf '%s\n' "$APPSTORE_CONNECT_KEY" > ios/Authkey.p8
+      - name: Prepare access to the certificates repository
+        env:
+          MATCH_GIT_TOKEN: ${{ secrets.MATCH_GIT_TOKEN }}
+        run: |
+          auth=$(printf '%s:%s' "${{ github.repository_owner }}" "$MATCH_GIT_TOKEN" | base64 | tr -d '\n')
+          echo "::add-mask::$auth"
+          echo "MATCH_GIT_BASIC_AUTHORIZATION=$auth" >> $GITHUB_ENV
+          echo "MATCH_CERTIFICATES_URL=https://github.com/${MATCH_CERTIFICATES_REPO}.git" >> $GITHUB_ENV
+      - name: Ruby Setup for Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: 'packages/mobile'
+      - name: Build, sign and upload to TestFlight
+        uses: maierj/fastlane-action@v1.4.0
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPSTORE_CONNECT_KEY_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ID }}
+          APPSTORE_CONNECT_KEY_ISSUER_ID: ${{ secrets.APPSTORE_CONNECT_KEY_ISSUER_ID }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          PACKAGE_VERSION: ${{ env.PACKAGE_VERSION }}
+        with:
+          lane: 'ios fork_testflight'
+          subdirectory: 'packages/mobile'
