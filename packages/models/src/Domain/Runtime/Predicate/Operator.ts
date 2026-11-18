@@ -15,6 +15,9 @@ export function valueMatchesTargetValue(
     targetValue = dateFromDSLDateString(targetValue)
   }
 
+  /** Before lowercasing: a regex's meaning changes with case (\D is not \d). */
+  const originalTargetValue = targetValue
+
   if (typeof targetValue === 'string') {
     targetValue = targetValue.toLowerCase()
   }
@@ -78,7 +81,11 @@ export function valueMatchesTargetValue(
   }
 
   if (operator === 'in' && Array.isArray(targetValue)) {
-    return (targetValue as SureValue[]).includes(value)
+    /** Case-insensitive like the other operators: the value is lowercased, so the list is too. */
+    const candidates = (targetValue as SureValue[]).map((candidate) => {
+      return typeof candidate === 'string' ? candidate.toLowerCase() : candidate
+    })
+    return candidates.includes(value as SureValue)
   }
 
   if (operator === 'includes') {
@@ -92,7 +99,7 @@ export function valueMatchesTargetValue(
   }
 
   if (operator === 'matches') {
-    const regex = new RegExp(targetValue as string)
+    const regex = new RegExp(originalTargetValue as string, 'i')
     return regex.test(value as string)
   }
   return false

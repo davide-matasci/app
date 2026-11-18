@@ -1,21 +1,14 @@
 import { WebApplication } from '@/Application/WebApplication'
 import { StringDeleteTag } from '@/Constants/Strings'
-import {
-  predicateFromJson,
-  PredicateJsonForm,
-  SmartView,
-  SmartViewDefaultIconName,
-  SmartViewMutator,
-  VectorIconNameOrEmoji,
-} from '@standardnotes/snjs'
+import { CompoundPredicateBuilderController } from '@/Components/SmartViewBuilder/CompoundPredicateBuilderController'
+import { SmartView, SmartViewDefaultIconName, SmartViewMutator, VectorIconNameOrEmoji } from '@standardnotes/snjs'
 import { confirmDialog } from '@standardnotes/ui-services'
 import { action, makeObservable, observable } from 'mobx'
 
 export class EditSmartViewModalController {
   title = ''
   icon: VectorIconNameOrEmoji = SmartViewDefaultIconName
-  predicateJson = ''
-  isPredicateJsonValid = false
+  predicateController = new CompoundPredicateBuilderController()
   isSaving = false
   view: SmartView | undefined = undefined
 
@@ -23,15 +16,11 @@ export class EditSmartViewModalController {
     makeObservable(this, {
       title: observable,
       icon: observable,
-      predicateJson: observable,
-      isPredicateJsonValid: observable,
       isSaving: observable,
       view: observable,
 
       setTitle: action,
       setIcon: action,
-      setPredicateJson: action,
-      setIsPredicateJsonValid: action,
       setIsSaving: action,
       setView: action,
     })
@@ -45,22 +34,13 @@ export class EditSmartViewModalController {
     this.icon = icon
   }
 
-  setPredicateJson = (json: string) => {
-    this.predicateJson = json
-  }
-
-  setIsPredicateJsonValid = (isValid: boolean) => {
-    this.isPredicateJsonValid = isValid
-  }
-
   setView = (view: SmartView | undefined) => {
     this.view = view
 
     if (view) {
       this.setTitle(view.title)
       this.setIcon(view.iconString)
-      this.setPredicateJson(JSON.stringify(view.predicate.toJson(), null, 2))
-      this.setIsPredicateJsonValid(true)
+      this.predicateController.loadFromJson(view.predicate.toJson())
     }
   }
 
@@ -72,7 +52,7 @@ export class EditSmartViewModalController {
     this.setView(undefined)
     this.setTitle('')
     this.setIcon(SmartViewDefaultIconName)
-    this.setPredicateJson('')
+    this.predicateController.resetState()
   }
 
   save = async () => {
@@ -80,9 +60,7 @@ export class EditSmartViewModalController {
       return
     }
 
-    this.validateAndPrettifyCustomPredicate()
-
-    if (!this.isPredicateJsonValid) {
+    if (this.predicateController.incompleteConditionCount > 0) {
       return
     }
 
@@ -91,7 +69,7 @@ export class EditSmartViewModalController {
     await this.application.changeAndSaveItem.execute<SmartViewMutator>(this.view, (mutator) => {
       mutator.title = this.title
       mutator.iconString = (this.icon as string) || SmartViewDefaultIconName
-      mutator.predicate = JSON.parse(this.predicateJson) as PredicateJsonForm
+      mutator.predicate = this.predicateController.toJson()
     })
 
     this.setIsSaving(false)
@@ -115,23 +93,6 @@ export class EditSmartViewModalController {
         .deleteItem(view)
         .then(() => this.application.sync.sync())
         .catch(console.error)
-    }
-  }
-
-  validateAndPrettifyCustomPredicate = () => {
-    try {
-      const parsedPredicate: PredicateJsonForm = JSON.parse(this.predicateJson)
-      const predicate = predicateFromJson(parsedPredicate)
-
-      if (predicate) {
-        this.setPredicateJson(JSON.stringify(parsedPredicate, null, 2))
-        this.setIsPredicateJsonValid(true)
-      } else {
-        this.setIsPredicateJsonValid(false)
-      }
-    } catch {
-      this.setIsPredicateJsonValid(false)
-      return
     }
   }
 }

@@ -1,110 +1,145 @@
 import { NativeFeatureIdentifier } from '@standardnotes/features'
-import { NoteType, PredicateCompoundOperator, PredicateJsonForm } from '@standardnotes/snjs'
-import { makeObservable, observable, action } from 'mobx'
-import { PredicateKeypath, PredicateKeypathTypes } from './PredicateKeypaths'
+import { NoteType, PredicateJsonForm } from '@standardnotes/snjs'
+import { action, computed, makeObservable, observable, toJS } from 'mobx'
+import { PredicateKeypath } from './PredicateKeypaths'
+import {
+  Condition,
+  ConditionGroup,
+  ConditionNode,
+  ConditionValue,
+  GroupMatch,
+  MaxGroupDepth,
+  OperatorId,
+  conditionTreeToPredicate,
+  defaultValueForField,
+  newCondition,
+  newGroup,
+  operatorDefinition,
+  predicateToConditionTree,
+} from './Model/SmartViewConditions'
 
-const getEmptyPredicate = (): PredicateJsonForm => {
-  return {
-    keypath: 'title',
-    operator: '!=',
-    value: '',
-  }
-}
-
-const toTagsPredicate = (tagTitle: PredicateJsonForm['value']): PredicateJsonForm => ({
-  keypath: 'tags',
-  operator: 'includes',
-  value: {
-    keypath: 'title',
-    operator: '=',
-    value: tagTitle,
-  },
-})
-
+/** Edits a smart view's conditions as a tree of groups (see Model/SmartViewConditions). */
 export class CompoundPredicateBuilderController {
-  operator: PredicateCompoundOperator = 'and'
-  predicates: PredicateJsonForm[] = [getEmptyPredicate()]
+  root: ConditionGroup = newGroup()
 
   constructor() {
     makeObservable(this, {
-      operator: observable,
+      root: observable,
+      incompleteConditionCount: computed,
+      loadFromJson: action,
+      resetState: action,
+      setMatch: action,
+      addCondition: action,
+      addGroup: action,
+      removeNode: action,
+      setField: action,
       setOperator: action,
-
-      predicates: observable,
-      setPredicate: action,
-      addPredicate: action,
-      removePredicate: action,
+      setValue: action,
     })
   }
 
-  setOperator = (operator: PredicateCompoundOperator) => {
-    this.operator = operator
+  loadFromJson = (predicate: PredicateJsonForm) => {
+    this.root = predicateToConditionTree(predicate)
   }
 
-  setPredicate = (index: number, predicate: Partial<PredicateJsonForm>) => {
-    const predicateAtIndex = this.predicates[index]
-    this.predicates[index] = {
-      ...predicateAtIndex,
-      ...predicate,
-    }
-  }
-
-  changePredicateKeypath = (index: number, keypath: string) => {
-    const currentKeyPath = this.predicates[index].keypath as PredicateKeypath
-    const currentKeyPathType = PredicateKeypathTypes[currentKeyPath]
-    const newKeyPathType = PredicateKeypathTypes[keypath as PredicateKeypath]
-
-    if (currentKeyPathType !== newKeyPathType) {
-      switch (newKeyPathType) {
-        case 'string':
-          this.setPredicate(index, { value: '' })
-          break
-        case 'boolean':
-          this.setPredicate(index, { value: true })
-          break
-        case 'number':
-          this.setPredicate(index, { value: 0 })
-          break
-        case 'noteType':
-          this.setPredicate(index, { value: Object.values(NoteType)[0] })
-          break
-        case 'editorIdentifier':
-          this.setPredicate(index, { value: NativeFeatureIdentifier.TYPES.PlainEditor })
-          break
-        case 'date':
-          this.setPredicate(index, { value: '1.days.ago' })
-          break
-        case 'tag':
-          this.setPredicate(index, { value: '' })
-          break
-      }
-    }
-
-    this.setPredicate(index, { keypath })
-  }
-
-  addPredicate = () => {
-    this.predicates.push(getEmptyPredicate())
-  }
-
-  removePredicate = (index: number) => {
-    this.predicates.splice(index, 1)
+  resetState = () => {
+    this.root = newGroup()
   }
 
   toJson(): PredicateJsonForm {
-    return {
-      operator: this.operator,
-      value: this.predicates.map((predicate) => {
-        if (predicate.keypath === 'tags') {
-          return toTagsPredicate(predicate.value)
+    return conditionTreeToPredicate(toJS(this.root))
+  }
+
+  /** Conditions that can't be saved as they are (a tag condition with no tag picked). */
+  get incompleteConditionCount(): number {
+    const count = (group: ConditionGroup): number =>
+      group.children.reduce((total, child) => {
+        if (child.type === 'group') {
+          return total + count(child)
         }
-        return predicate
-      }),
+        const isTagMissing =
+          child.type === 'condition' &&
+          child.value.kind === 'tag' &&
+          !('uuid' in child.value.tag ? child.value.tag.uuid : child.value.tag.title)
+        return total + (isTagMissing ? 1 : 0)
+      }, 0)
+    return count(this.root)
+  }
+
+  setMatch = (group: ConditionGroup, match: GroupMatch) => {
+    group.match = match
+  }
+
+  addCondition = (group: ConditionGroup) => {
+    group.children.push(newCondition())
+  }
+
+  /** `depth` is the group's own depth (the root is 1); groups nest at most MaxGroupDepth deep. */
+  addGroup = (group: ConditionGroup, depth: number) => {
+    if (depth >= MaxGroupDepth) {
+      return
+    }
+    group.children.push(newGroup(group.match === 'all' ? 'any' : 'all'))
+  }
+
+  /** Removes a node; a nested group left empty is removed too, the root keeps at least one node. */
+  removeNode = (parent: ConditionGroup, node: ConditionNode) => {
+    const isLastAtRoot = parent === this.root && parent.children.length === 1
+    if (isLastAtRoot) {
+      return
+    }
+
+    parent.children.splice(parent.children.indexOf(node), 1)
+
+    if (parent !== this.root && parent.children.length === 0) {
+      const grandparent = this.findParent(this.root, parent)
+      if (grandparent) {
+        this.removeNode(grandparent, parent)
+      }
     }
   }
 
-  resetState() {
-    this.operator = 'and'
-    this.predicates = [getEmptyPredicate()]
+  setField = (condition: Condition, field: PredicateKeypath) => {
+    const fresh = newCondition(field)
+    condition.field = field
+    condition.operatorId = fresh.operatorId
+    condition.value = initialValueForField(field)
   }
+
+  setOperator = (condition: Condition, operatorId: OperatorId) => {
+    if (operatorDefinition(condition.field, operatorId)) {
+      condition.operatorId = operatorId
+    }
+  }
+
+  setValue = (condition: Condition, value: ConditionValue) => {
+    condition.value = value
+  }
+
+  private findParent(group: ConditionGroup, node: ConditionNode): ConditionGroup | undefined {
+    for (const child of group.children) {
+      if (child === node) {
+        return group
+      }
+      if (child.type === 'group') {
+        const found = this.findParent(child, node)
+        if (found) {
+          return found
+        }
+      }
+    }
+    return undefined
+  }
+}
+
+/** Like defaultValueForField, with a concrete first choice for note type and editor. */
+function initialValueForField(field: PredicateKeypath): ConditionValue {
+  const value = defaultValueForField(field)
+  if (value.kind === 'choice') {
+    return {
+      kind: 'choice',
+      choice: field === 'noteType' ? Object.values(NoteType)[0] : NativeFeatureIdentifier.TYPES.PlainEditor,
+    }
+  }
+  return value
 }
