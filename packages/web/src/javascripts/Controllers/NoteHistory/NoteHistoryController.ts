@@ -19,7 +19,9 @@ import {
   ItemManagerInterface,
   ListRevisions,
   MutatorClientInterface,
+  NoteContent,
   NoteHistoryEntry,
+  NoteMutator,
   PayloadEmitSource,
   RevisionMetadata,
   SNNote,
@@ -340,7 +342,7 @@ export class NoteHistoryController {
       void this._changeAndSaveItem.execute(
         originalNote,
         (mutator) => {
-          mutator.setCustomContent(revision.payload.content)
+          restoreRevisionContent(mutator as NoteMutator, revision.payload.content)
         },
         true,
         PayloadEmitSource.RemoteRetrieved,
@@ -390,4 +392,21 @@ export class NoteHistoryController {
 
     await this.fetchRemoteHistory()
   }
+}
+
+/**
+ * Restores what a revision is about (title, body, editor) and keeps the note's current
+ * state: protection, links, pinned/starred/archived and other flags are not part of a
+ * revision's purpose, and restoring an old copy of them silently unprotected or unlinked
+ * the note.
+ */
+export function restoreRevisionContent(mutator: NoteMutator, revision: NoteContent): void {
+  mutator.title = revision.title
+  mutator.text = revision.text
+  mutator.preview_plain = revision.preview_plain ?? ''
+  mutator.preview_html = revision.preview_html
+  if (revision.noteType) {
+    mutator.noteType = revision.noteType
+  }
+  mutator.editorIdentifier = revision.editorIdentifier
 }
