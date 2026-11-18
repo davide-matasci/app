@@ -194,7 +194,6 @@ export const SuperEditor: FunctionComponent<Props> = ({
     (itemUuid: string) => {
       const item = application.items.findItem(itemUuid)
       if (item) {
-        // TODO: We should only unlink item if all link bubbles to that item have been removed from the note
         linkingController.unlinkItemFromSelectedItem(item).catch(console.error)
       }
     },

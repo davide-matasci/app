@@ -287,6 +287,7 @@ export class WebDependencies extends DependencyContainer {
         application.mutator,
         application.sync,
         application.vaults,
+        application.alerts,
         application.events,
       )
     })

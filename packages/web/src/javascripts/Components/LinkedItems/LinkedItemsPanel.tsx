@@ -17,7 +17,7 @@ import { c } from 'ttag'
 const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
   const application = useApplication()
 
-  const { linkItems, unlinkItems, activateItem, createAndAddNewTag, isEntitledToNoteLinking } =
+  const { linkItems, unlinkItemsUnlessMentioned, activateItem, createAndAddNewTag, isEntitledToNoteLinking } =
     application.linkingController
 
   const { notesLinkedToItem, notesLinkingToItem, filesLinkedToItem, filesLinkingToItem, tagsLinkedToItem } =
@@ -113,7 +113,7 @@ const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
                       key={link.id}
                       item={link.item}
                       searchQuery={searchQuery}
-                      unlinkItem={() => unlinkItems(item, link.item)}
+                      unlinkItem={() => unlinkItemsUnlessMentioned(item, link.item)}
                       activateItem={activateItem}
                       handleFileAction={application.filesController.handleFileAction}
                     />
@@ -135,7 +135,7 @@ const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
                       key={link.id}
                       item={link.item}
                       searchQuery={searchQuery}
-                      unlinkItem={() => unlinkItems(item, link.item)}
+                      unlinkItem={() => unlinkItemsUnlessMentioned(item, link.item)}
                       activateItem={activateItem}
                       handleFileAction={application.filesController.handleFileAction}
                     />
@@ -161,7 +161,7 @@ const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
                     key={link.id}
                     item={link.item}
                     searchQuery={searchQuery}
-                    unlinkItem={() => unlinkItems(item, link.item)}
+                    unlinkItem={() => unlinkItemsUnlessMentioned(item, link.item)}
                     activateItem={activateItem}
                     handleFileAction={application.filesController.handleFileAction}
                   />
@@ -180,7 +180,7 @@ const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
                       key={link.id}
                       item={link.item}
                       searchQuery={searchQuery}
-                      unlinkItem={() => unlinkItems(item, link.item)}
+                      unlinkItem={() => unlinkItemsUnlessMentioned(item, link.item)}
                       activateItem={activateItem}
                       handleFileAction={application.filesController.handleFileAction}
                     />
@@ -199,7 +199,7 @@ const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
                       key={link.id}
                       item={link.item}
                       searchQuery={searchQuery}
-                      unlinkItem={() => unlinkItems(item, link.item)}
+                      unlinkItem={() => unlinkItemsUnlessMentioned(item, link.item)}
                       activateItem={activateItem}
                       handleFileAction={application.filesController.handleFileAction}
                     />
@@ -218,7 +218,7 @@ const LinkedItemsPanel = ({ item }: { item: DecryptedItem }) => {
                       key={link.id}
                       item={link.item}
                       searchQuery={searchQuery}
-                      unlinkItem={() => unlinkItems(item, link.item)}
+                      unlinkItem={() => unlinkItemsUnlessMentioned(item, link.item)}
                       activateItem={activateItem}
                       handleFileAction={application.filesController.handleFileAction}
                     />

@@ -16,6 +16,7 @@ import {
   InternalFeature,
   PreferenceServiceInterface,
   Result,
+  NoteType,
 } from '@standardnotes/snjs'
 import { FilesController } from './FilesController'
 import { ItemListController } from './ItemList/ItemListController'
@@ -94,6 +95,7 @@ describe('LinkingController', () => {
           application.mutator,
           application.sync,
           application.vaults,
+          application.alerts,
           eventBus,
         ),
       configurable: true,
@@ -274,6 +276,38 @@ describe('LinkingController', () => {
       await application.linkingController.linkItems(note, file)
 
       expect(moveToVaultSpy).toHaveBeenCalled()
+    })
+  })
+
+  describe('unlinkItemsUnlessMentioned', () => {
+    beforeEach(() => {
+      application.alerts.alert = jest.fn().mockResolvedValue(undefined)
+      application.mutator.unlinkItems = jest.fn().mockResolvedValue(undefined)
+      application.sync.sync = jest.fn().mockResolvedValue(undefined)
+    })
+
+    it('keeps the link while a Super note mentions the item in its text, from either side', async () => {
+      const linked = createNote('linked', { uuid: 'linked-uuid' })
+      const superNote = createNote('super', {
+        noteType: NoteType.Super,
+        text: '{"root":{"children":[{"type":"snbubble","itemUuid":"linked-uuid"}]}}',
+      })
+
+      await application.linkingController.unlinkItemsUnlessMentioned(superNote, linked)
+      await application.linkingController.unlinkItemsUnlessMentioned(linked, superNote)
+
+      expect(application.mutator.unlinkItems).not.toHaveBeenCalled()
+      expect(application.alerts.alert).toHaveBeenCalledTimes(2)
+    })
+
+    it('unlinks when no mention is left', async () => {
+      const linked = createNote('linked', { uuid: 'linked-uuid' })
+      const superNote = createNote('super', { noteType: NoteType.Super, text: '{"root":{"children":[]}}' })
+
+      await application.linkingController.unlinkItemsUnlessMentioned(superNote, linked)
+
+      expect(application.mutator.unlinkItems).toHaveBeenCalledWith(superNote, linked)
+      expect(application.alerts.alert).not.toHaveBeenCalled()
     })
   })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $getNodeByKey, Klass, LexicalNode } from 'lexical'
+import { $dfs } from '@lexical/utils'
 import { ItemNodeInterface } from '../ItemNodeInterface'
 
 type NodeKey = string
@@ -28,7 +29,9 @@ export function NodeObserverPlugin({ nodeType, onRemove }: ObserverProps) {
             }
           } else if (mutation === 'destroyed') {
             const uuid = map.current.get(nodeKey)
-            if (uuid) {
+            map.current.delete(nodeKey)
+            /** Another node can still point at the same item (a note mentioned twice). */
+            if (uuid && !$isItemStillPresent(nodeType, uuid)) {
               onRemove(uuid)
             }
           }
@@ -42,4 +45,8 @@ export function NodeObserverPlugin({ nodeType, onRemove }: ObserverProps) {
   })
 
   return null
+}
+
+function $isItemStillPresent(nodeType: Klass<LexicalNode>, uuid: ItemUuid): boolean {
+  return $dfs().some(({ node }) => node instanceof nodeType && (node as unknown as ItemNodeInterface).getId() === uuid)
 }

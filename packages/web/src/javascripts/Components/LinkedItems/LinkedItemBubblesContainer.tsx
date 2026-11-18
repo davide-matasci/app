@@ -44,12 +44,12 @@ const LinkedItemBubblesContainer = ({
   const application = useApplication()
   const keyboardService = application.keyboardService
 
-  const { unlinkItems, activateItem } = linkingController
+  const { unlinkItemsUnlessMentioned, activateItem } = linkingController
   const unlinkItem = useCallback(
     async (itemToUnlink: LinkableItem) => {
-      void unlinkItems(item, itemToUnlink)
+      void unlinkItemsUnlessMentioned(item, itemToUnlink)
     },
-    [item, unlinkItems],
+    [item, unlinkItemsUnlessMentioned],
   )
 
   const { notesLinkedToItem, filesLinkedToItem, tagsLinkedToItem, notesLinkingToItem, filesLinkingToItem } =
