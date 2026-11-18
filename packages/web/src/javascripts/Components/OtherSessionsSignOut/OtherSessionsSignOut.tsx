@@ -17,16 +17,18 @@ const ConfirmOtherSessionsSignOut = observer(({ application }: Props) => {
     application.accountMenuController.setOtherSessionsSignOut(false)
   }, [application])
 
-  const confirm = useCallback(() => {
-    application.revokeAllOtherSessions().catch(console.error)
+  const confirm = useCallback(async () => {
     closeDialog()
-    application.alerts
-      .alert(
-        c('B1.Account.Session.Info').t`You have successfully revoked your sessions from other devices.`,
-        undefined,
-        c('B1.Account.Session.Action').t`Finish`,
+    /** Say "revoked" only once it is true: a session left valid matters (e.g. a lost device). */
+    const message = await application
+      .revokeAllOtherSessions()
+      .then(() => c('B1.Account.Session.Info').t`You have successfully revoked your sessions from other devices.`)
+      .catch(
+        (error: Error) =>
+          c('B1.Account.Session.Info')
+            .t`Some sessions could not be revoked and may still be active: ${error.message}. Please try again.`,
       )
-      .catch(console.error)
+    application.alerts.alert(message, undefined, c('B1.Account.Session.Action').t`Finish`).catch(console.error)
   }, [application, closeDialog])
 
   return (

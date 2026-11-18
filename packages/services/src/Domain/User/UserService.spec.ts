@@ -98,4 +98,28 @@ describe('UserService', () => {
 
     expect(await createService().submitUserRequest(UserRequestType.ExitDiscount)).toBeFalsy()
   })
+
+  it('should wipe local data on sign-out even when the server never answers', async () => {
+    jest.useFakeTimers()
+    const calls: string[] = []
+    sessionManager.signOut = jest.fn().mockImplementation(() => {
+      calls.push('server sign-out')
+      return new Promise(() => undefined)
+    })
+    encryptionService.deleteWorkspaceSpecificKeyStateFromDevice = jest.fn().mockImplementation(async () => {
+      calls.push('delete keys')
+    })
+    storageService.clearAllData = jest.fn().mockImplementation(async () => {
+      calls.push('clear data')
+    })
+    internalEventBus.publishSync = jest.fn()
+    internalEventBus.publish = jest.fn()
+
+    const signedOut = createService().signOut(true)
+    await jest.advanceTimersByTimeAsync(3000)
+    await signedOut
+
+    expect(calls.slice(0, 3)).toEqual(['delete keys', 'clear data', 'server sign-out'])
+    jest.useRealTimers()
+  })
 })

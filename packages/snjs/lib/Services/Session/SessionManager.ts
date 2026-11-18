@@ -715,7 +715,14 @@ export class SessionManager
     }
 
     const otherSessions = response.data.filter((session) => !session.current)
-    await Promise.all(otherSessions.map((session) => this.revokeSession(session.uuid)))
+    const results = await Promise.all(otherSessions.map((session) => this.revokeSession(session.uuid)))
+
+    /** A session that was not revoked stays valid: report it instead of claiming success. */
+    const failed = results.filter((result) => isErrorResponse(result))
+    if (failed.length > 0) {
+      const error = isErrorResponse(failed[0]) ? failed[0].data?.error : undefined
+      throw new Error(error?.message ?? API_MESSAGE_GENERIC_SYNC_FAIL())
+    }
   }
 
   private async processChangeCredentialsResponse(

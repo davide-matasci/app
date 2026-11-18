@@ -18,6 +18,16 @@ describe('getItemTitleInContextOfLinkBubble', () => {
     expect(getItemTitleInContextOfLinkBubble(item as DecryptedItemInterface<ItemContent>)).toBe('Note Preview')
   })
 
+  it('never shows the text of an untitled protected note', () => {
+    const item = {
+      preview_plain: 'Secret text',
+      title: '',
+      protected: true,
+      content_type: ContentType.TYPES.Note,
+    } as jest.Mocked<SNNote>
+    expect(getItemTitleInContextOfLinkBubble(item as DecryptedItemInterface<ItemContent>)).toBe('Protected note')
+  })
+
   it('returns empty string if title is empty and item is not a note', () => {
     const item = { title: '', content_type: ContentType.TYPES.Tag } as jest.Mocked<SNNote>
     expect(getItemTitleInContextOfLinkBubble(item as DecryptedItemInterface<ItemContent>)).toBe('')

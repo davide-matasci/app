@@ -26,7 +26,14 @@ export class CreateEncryptedBackupFile implements UseCaseInterface<BackupFile> {
 
     const result = await this.encryption.encryptSplit(keyLookupSplit)
 
-    const ejected = result.map((payload) => CreateEncryptedBackupFileContextPayload(payload))
+    /**
+     * Items this device can't decrypt right now (e.g. waiting for a key) are already
+     * encrypted: include them as they are, so the backup is complete instead of
+     * silently missing them.
+     */
+    const undecryptable = this.items.invalidItems.map((item) => item.payload)
+
+    const ejected = [...result, ...undecryptable].map((payload) => CreateEncryptedBackupFileContextPayload(payload))
 
     const data: BackupFile = {
       version: ProtocolVersionLatest,
