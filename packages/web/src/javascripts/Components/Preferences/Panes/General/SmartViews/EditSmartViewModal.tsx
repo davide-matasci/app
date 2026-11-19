@@ -75,7 +75,8 @@ const EditSmartViewModal = ({ controller, platform }: Props) => {
       close={closeDialog}
       actions={modalActions}
     >
-      <div className="px-4 py-4">
+      {/* Labels and controls aren't text to select (a long press on iPad selected across them); inputs still are */}
+      <div className="select-none px-4 py-4 [&_input]:select-text [&_textarea]:select-text">
         <div className="flex h-full flex-col gap-4">
           <div className="flex items-center gap-2.5">
             <div className="text-sm font-semibold">{c('B6.Preferences.General.Label').t`Title:`}</div>
