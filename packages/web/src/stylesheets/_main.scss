@@ -211,19 +211,3 @@ body.ipad-window-controls {
     }
   }
 }
-
-/**
- * iOS/iPadOS Home Screen web app: the app extends under the status bar (viewport-fit=cover) and iOS blurs and
- * lightens whatever is under it, which looked like a cloudy band. Paint that area solid in the theme's color.
- */
-body.ios-home-screen-app::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--safe-area-inset-top);
-  background-color: var(--sn-stylekit-background-color);
-  pointer-events: none;
-  z-index: 2147483647;
-}

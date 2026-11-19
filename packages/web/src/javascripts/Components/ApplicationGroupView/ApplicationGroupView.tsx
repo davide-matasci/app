@@ -83,10 +83,6 @@ class ApplicationGroupView extends Component<Props, State> {
       document.body.classList.add('chromium')
     }
     document.addEventListener('keydown', preventSelectAllOutsideEditableFields)
-    if (isIOSHomeScreenWebApp()) {
-      // Paints the area under the status bar (see _main.scss)
-      document.body.classList.add('ios-home-screen-app')
-    }
     if (isIPadHomeScreenWebApp()) {
       // iPadOS draws its window controls over the top-left corner of windowed (not full-screen) apps
       const updateWindowControls = () =>
@@ -167,13 +163,6 @@ function isHomeScreenWebApp(): boolean {
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   )
-}
-
-function isIOSHomeScreenWebApp(): boolean {
-  const isIOSDevice =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
-  return isIOSDevice && isHomeScreenWebApp()
 }
 
 /**
