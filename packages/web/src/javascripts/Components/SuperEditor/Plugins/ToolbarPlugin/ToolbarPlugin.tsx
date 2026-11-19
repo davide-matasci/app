@@ -566,6 +566,42 @@ const ToolbarPlugin = () => {
 
   const canShowAllItems = isMobile || isToolbarFixedToTop
 
+  /**
+   * Buttons that act on the text at the cursor are shown only while editing: otherwise there's no visible cursor
+   * and they'd change text at the last, invisible cursor position. The bar itself stays, so the note doesn't jump.
+   */
+  const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const [isToolbarFocused, setIsToolbarFocused] = useState(false)
+  useEffect(() => {
+    const rootElement = editor.getRootElement()
+    const container = containerRef.current
+    if (!rootElement) {
+      return
+    }
+    const onEditorFocus = () => setIsEditorFocused(true)
+    const onEditorBlur = () => setIsEditorFocused(false)
+    const onToolbarFocusIn = () => setIsToolbarFocused(true)
+    const onToolbarFocusOut = (event: FocusEvent) => {
+      if (!container?.contains(event.relatedTarget as Node)) {
+        setIsToolbarFocused(false)
+      }
+    }
+    setIsEditorFocused(document.activeElement === rootElement)
+    rootElement.addEventListener('focus', onEditorFocus)
+    rootElement.addEventListener('blur', onEditorBlur)
+    container?.addEventListener('focusin', onToolbarFocusIn)
+    container?.addEventListener('focusout', onToolbarFocusOut)
+    return () => {
+      rootElement.removeEventListener('focus', onEditorFocus)
+      rootElement.removeEventListener('blur', onEditorBlur)
+      container?.removeEventListener('focusin', onToolbarFocusIn)
+      container?.removeEventListener('focusout', onToolbarFocusOut)
+    }
+  }, [editor])
+  const isAnyMenuOpen =
+    isTextStyleMenuOpen || isTextFormatMenuOpen || isAlignmentMenuOpen || isInsertMenuOpen || isEditingLink
+  const canShowCursorItems = !canShowAllItems || isEditorFocused || isToolbarFocused || isAnyMenuOpen
+
   const toolbarRef = useRef<HTMLDivElement>(null)
   const toolbarStore = useToolbarStore()
   useEffect(() => {
@@ -676,112 +712,116 @@ const ToolbarPlugin = () => {
                 />
               </>
             )}
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Label').t`Formatting options`}
-              onSelect={() => {
-                setIsTextStyleMenuOpen(!isTextStyleMenuOpen)
-              }}
-              ref={textStyleAnchorRef}
-              className={isTextStyleMenuOpen ? 'md:bg-default' : ''}
-            >
-              <Icon type={blockTypeToIconName[blockType]} size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
-              <Icon type="chevron-down" size="custom" className="ml-2 h-4 w-4 md:h-3.5 md:w-3.5" />
-            </ToolbarButton>
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Action').t`Bold`}
-              iconName="bold"
-              active={isBold}
-              onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
-            />
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Action').t`Italic`}
-              iconName="italic"
-              active={isItalic}
-              onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
-            />
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Action').t`Underline`}
-              iconName="underline"
-              active={isUnderline}
-              onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}
-            />
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Action').t`Link`}
-              iconName="link"
-              active={!!linkNode}
-              onSelect={() => {
-                editor.dispatchCommand(TOGGLE_LINK_AND_EDIT_COMMAND, '')
-              }}
-            />
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Action').t`Inline Code`}
-              iconName="code-tags"
-              active={isCode}
-              onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
-            />
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Label').t`Text style`}
-              onSelect={() => {
-                setIsTextFormatMenuOpen(!isTextFormatMenuOpen)
-              }}
-              ref={textFormatAnchorRef}
-              className={isTextFormatMenuOpen ? 'md:bg-default' : ''}
-            >
-              <Icon type="text" size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
-              <Icon type="chevron-down" size="custom" className="ml-1 h-4 w-4 md:h-3.5 md:w-3.5" />
-            </ToolbarButton>
-            <ToolbarButton
-              name={c('B3.Notes.EditorToolbar.Label').t`Alignment`}
-              onSelect={() => {
-                setIsAlignmentMenuOpen(!isAlignmentMenuOpen)
-              }}
-              ref={alignmentAnchorRef}
-              className={isAlignmentMenuOpen ? 'md:bg-default' : ''}
-            >
-              <Icon type="align-left" size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
-              <Icon type="chevron-down" size="custom" className="ml-2 h-4 w-4 md:h-3.5 md:w-3.5" />
-            </ToolbarButton>
-            <ToolbarButton
-              name={IndentBlock.name}
-              iconName={IndentBlock.iconName}
-              onSelect={() => IndentBlock.onSelect(editor)}
-            />
-            <ToolbarButton
-              name={OutdentBlock.name}
-              iconName={OutdentBlock.iconName}
-              onSelect={() => OutdentBlock.onSelect(editor)}
-            />
-            {canShowAllItems && (
-              <ToolbarButton
-                name={c('B3.Notes.EditorToolbar.Label').t`Insert`}
-                onSelect={() => {
-                  setIsInsertMenuOpen(!isInsertMenuOpen)
-                }}
-                ref={insertAnchorRef}
-                className={isInsertMenuOpen ? 'md:bg-default' : ''}
-              >
-                <Icon type="add" size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
-                <Icon type="chevron-down" size="custom" className="ml-2 h-4 w-4 md:h-3.5 md:w-3.5" />
-              </ToolbarButton>
+            {canShowCursorItems && (
+              <>
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Label').t`Formatting options`}
+                  onSelect={() => {
+                    setIsTextStyleMenuOpen(!isTextStyleMenuOpen)
+                  }}
+                  ref={textStyleAnchorRef}
+                  className={isTextStyleMenuOpen ? 'md:bg-default' : ''}
+                >
+                  <Icon type={blockTypeToIconName[blockType]} size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                  <Icon type="chevron-down" size="custom" className="ml-2 h-4 w-4 md:h-3.5 md:w-3.5" />
+                </ToolbarButton>
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Action').t`Bold`}
+                  iconName="bold"
+                  active={isBold}
+                  onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
+                />
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Action').t`Italic`}
+                  iconName="italic"
+                  active={isItalic}
+                  onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
+                />
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Action').t`Underline`}
+                  iconName="underline"
+                  active={isUnderline}
+                  onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}
+                />
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Action').t`Link`}
+                  iconName="link"
+                  active={!!linkNode}
+                  onSelect={() => {
+                    editor.dispatchCommand(TOGGLE_LINK_AND_EDIT_COMMAND, '')
+                  }}
+                />
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Action').t`Inline Code`}
+                  iconName="code-tags"
+                  active={isCode}
+                  onSelect={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
+                />
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Label').t`Text style`}
+                  onSelect={() => {
+                    setIsTextFormatMenuOpen(!isTextFormatMenuOpen)
+                  }}
+                  ref={textFormatAnchorRef}
+                  className={isTextFormatMenuOpen ? 'md:bg-default' : ''}
+                >
+                  <Icon type="text" size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                  <Icon type="chevron-down" size="custom" className="ml-1 h-4 w-4 md:h-3.5 md:w-3.5" />
+                </ToolbarButton>
+                <ToolbarButton
+                  name={c('B3.Notes.EditorToolbar.Label').t`Alignment`}
+                  onSelect={() => {
+                    setIsAlignmentMenuOpen(!isAlignmentMenuOpen)
+                  }}
+                  ref={alignmentAnchorRef}
+                  className={isAlignmentMenuOpen ? 'md:bg-default' : ''}
+                >
+                  <Icon type="align-left" size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                  <Icon type="chevron-down" size="custom" className="ml-2 h-4 w-4 md:h-3.5 md:w-3.5" />
+                </ToolbarButton>
+                <ToolbarButton
+                  name={IndentBlock.name}
+                  iconName={IndentBlock.iconName}
+                  onSelect={() => IndentBlock.onSelect(editor)}
+                />
+                <ToolbarButton
+                  name={OutdentBlock.name}
+                  iconName={OutdentBlock.iconName}
+                  onSelect={() => OutdentBlock.onSelect(editor)}
+                />
+                {canShowAllItems && (
+                  <ToolbarButton
+                    name={c('B3.Notes.EditorToolbar.Label').t`Insert`}
+                    onSelect={() => {
+                      setIsInsertMenuOpen(!isInsertMenuOpen)
+                    }}
+                    ref={insertAnchorRef}
+                    className={isInsertMenuOpen ? 'md:bg-default' : ''}
+                  >
+                    <Icon type="add" size="custom" className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                    <Icon type="chevron-down" size="custom" className="ml-2 h-4 w-4 md:h-3.5 md:w-3.5" />
+                  </ToolbarButton>
+                )}
+                <ToolbarButton
+                  name={
+                    <>
+                      <div className="mb-1 font-semibold">
+                        {c('B3.Notes.EditorToolbar.Info').t`Create new note from selection`}
+                      </div>
+                      <div className="max-w-[35ch] text-xs">
+                        {c('B3.Notes.EditorToolbar.Info')
+                          .t`Creates a new note containing the current selection and replaces the selection with a link to the new note.`}
+                      </div>
+                    </>
+                  }
+                  iconName="notes"
+                  onSelect={() => {
+                    editor.dispatchCommand(CREATE_NOTE_FROM_SELECTION_COMMAND, undefined)
+                  }}
+                  disabled={!hasNonCollapsedSelection}
+                />
+              </>
             )}
-            <ToolbarButton
-              name={
-                <>
-                  <div className="mb-1 font-semibold">
-                    {c('B3.Notes.EditorToolbar.Info').t`Create new note from selection`}
-                  </div>
-                  <div className="max-w-[35ch] text-xs">
-                    {c('B3.Notes.EditorToolbar.Info')
-                      .t`Creates a new note containing the current selection and replaces the selection with a link to the new note.`}
-                  </div>
-                </>
-              }
-              iconName="notes"
-              onSelect={() => {
-                editor.dispatchCommand(CREATE_NOTE_FROM_SELECTION_COMMAND, undefined)
-              }}
-              disabled={!hasNonCollapsedSelection}
-            />
           </Toolbar>
           {isMobile && (
             <button
