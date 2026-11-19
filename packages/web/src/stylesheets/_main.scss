@@ -118,6 +118,16 @@ p {
   margin: 0;
 }
 
+/**
+ * The page itself never scrolls (each pane scrolls on its own): otherwise anything slightly taller than the
+ * window, or iOS's rubber-band bounce, moved the whole interface.
+ */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 html,
 body,
 .main-ui-view {
