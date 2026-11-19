@@ -167,4 +167,18 @@ describe('HeadlessSuperConverter', () => {
       'text',
     ])
   })
+
+  it('keeps backslashes and pipes in markdown table cells through export and import', async () => {
+    const converter = new HeadlessSuperConverter()
+    const markdown = '| ends with \\\\ | a\\|b | c |\n| 1 | 2 | 3 |'
+
+    const superString = converter.convertOtherFormatToSuperString(markdown, 'md')
+    const cellTexts = (JSON.stringify(JSON.parse(superString)).match(/"text":"(?:[^"\\]|\\.)*"/g) ?? []).map((t) =>
+      JSON.parse(t.slice(7)),
+    )
+    expect(cellTexts).toEqual(['ends with \\', 'a|b', 'c', '1', '2', '3'])
+
+    const exported = await converter.convertSuperStringToOtherFormat(superString, 'md')
+    expect(converter.convertOtherFormatToSuperString(exported, 'md')).toEqual(superString)
+  })
 })
