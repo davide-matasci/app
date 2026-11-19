@@ -35,7 +35,7 @@ const all = (sql, params = []) =>
     )
 
     const items = await all(
-      `select updated_at_timestamp as t, content_size as declared, length(content) as actual from items
+      `select updated_at_timestamp as t, content_type as type, content_size as declared, length(content) as actual from items
        where user_uuid = ? and deleted = 0 order by updated_at_timestamp asc`,
       [user],
     )
@@ -52,13 +52,14 @@ const all = (sql, params = []) =>
       }
       const slice = items.slice(start, end)
       const actual = slice.reduce((sum, item) => sum + (item.actual ?? 0), 0)
-      const largest = Math.max(...slice.map((item) => item.actual ?? 0))
+      const largestItem = slice.reduce((max, item) => ((item.actual ?? 0) > (max.actual ?? 0) ? item : max))
+      const largest = largestItem.actual ?? 0
       const flags = []
       if (actual > 5000000) flags.push('large page')
       if (slice.some((item) => item.declared == null)) flags.push('items without content_size')
       if (page < 3 || flags.length) {
         console.log(
-          `  page ${page + 1}: items ${start + 1}-${end}, ${(actual / 1e6).toFixed(2)} MB, largest item ${(largest / 1e6).toFixed(2)} MB` +
+          `  page ${page + 1}: items ${start + 1}-${end}, ${(actual / 1e6).toFixed(2)} MB, largest item ${(largest / 1e6).toFixed(2)} MB (${largestItem.type})` +
             (flags.length ? `  <-- ${flags.join(', ')}` : ''),
         )
       }
