@@ -268,8 +268,18 @@ function predicateToCondition(predicate: PredicateJsonForm): Condition | undefin
   }
   const fieldType = PredicateKeypathTypes[field]
 
+  /**
+   * Dates: ">=" / "<=" read as "in the last" / "not in the last" too (saved back as ">" / "<"; they differ only
+   * at the exact boundary instant), so views written with them stay editable.
+   */
+  const operator =
+    fieldType === 'date' && (inner.operator === '>=' || inner.operator === '<=')
+      ? inner.operator === '>='
+        ? '>'
+        : '<'
+      : inner.operator
   const definition = OperatorsForFieldType[fieldType].find(
-    (candidate) => candidate.operator === inner.operator && candidate.negated === negated,
+    (candidate) => candidate.operator === operator && candidate.negated === negated,
   )
   if (!definition) {
     return undefined

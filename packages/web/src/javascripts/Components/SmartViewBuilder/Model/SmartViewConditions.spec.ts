@@ -61,8 +61,8 @@ describe('smart view conditions', () => {
   it('keeps what the builder cannot represent, untouched, as a custom condition', () => {
     const inList: PredicateJsonForm = { keypath: 'title', operator: 'in', value: ['Meeting', 'Todo'] }
     const unknownField: PredicateJsonForm = { keypath: 'content_type', operator: '=', value: 'Note' }
-    const dateAtLeast: PredicateJsonForm = { keypath: 'created_at', operator: '>=', value: '1.years.ago' }
-    const stored: PredicateJsonForm = { operator: 'or', value: [inList, unknownField, dateAtLeast] }
+    const absoluteDate: PredicateJsonForm = { keypath: 'created_at', operator: '>', value: '2024-01-01' }
+    const stored: PredicateJsonForm = { operator: 'or', value: [inList, unknownField, absoluteDate] }
 
     const tree = predicateToConditionTree(stored)
 
@@ -157,5 +157,20 @@ describe('formatPredicateText', () => {
     expect(formatPredicateText(predicate)).toBe(
       'title startsWith "x" and (content.appData.foo = true or not (tags includes ["a", "b"]))',
     )
+  })
+})
+
+describe('date conditions written with >= or <=', () => {
+  it('are editable as "in the last" / "not in the last"', () => {
+    const tree = predicateToConditionTree({ keypath: 'created_at', operator: '>=', value: '365.days.ago' })
+    expect(tree.children[0]).toEqual({
+      type: 'condition',
+      field: 'created_at',
+      operatorId: 'withinLast',
+      value: { kind: 'relativeDate', amount: 365, unit: 'days' },
+    })
+
+    const notWithin = predicateToConditionTree({ keypath: 'created_at', operator: '<=', value: '2.years.ago' })
+    expect(notWithin.children[0]).toMatchObject({ operatorId: 'notWithinLast' })
   })
 })

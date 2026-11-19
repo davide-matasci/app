@@ -82,6 +82,7 @@ class ApplicationGroupView extends Component<Props, State> {
     if (IS_CHROME) {
       document.body.classList.add('chromium')
     }
+    document.addEventListener('keydown', preventSelectAllOutsideEditableFields)
     if (isIPadHomeScreenWebApp()) {
       // iPadOS draws its window controls over the window's top-left corner (see _main.scss)
       document.body.classList.add('ipad-window-controls')
@@ -154,4 +155,22 @@ function isIPadHomeScreenWebApp(): boolean {
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   return isIPad && isStandalone
+}
+
+/**
+ * Cmd/Ctrl+A outside a text field selected the whole interface (buttons, labels, every pane). It now only
+ * selects within inputs, text areas and editors, where it's meant for.
+ */
+function preventSelectAllOutsideEditableFields(event: KeyboardEvent) {
+  const isSelectAll = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'a'
+  if (!isSelectAll) {
+    return
+  }
+  const target = event.target
+  const isEditable =
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest('input, textarea, select, [contenteditable="true"]') !== null)
+  if (!isEditable) {
+    event.preventDefault()
+  }
 }

@@ -154,6 +154,7 @@ const Modal = ({
               open={showAdvanced}
               anchorElement={advancedOptionRef}
               disableMobileFullscreenTakeover={true}
+              disableApplyingMobileWidth={true}
               togglePopover={() => setShowAdvanced((show) => !show)}
               align="start"
               portal={false}
