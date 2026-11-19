@@ -273,10 +273,21 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
   }, [scrollerElem, anchorElem, editor])
 
   useEffect(() => {
-    if (menuRef.current) {
-      setMenuPosition(draggableBlockElem, menuRef.current, anchorElem)
+    const menu = menuRef.current
+    if (!menu) {
+      return
     }
-  }, [anchorElem, draggableBlockElem])
+    setMenuPosition(draggableBlockElem, menu, anchorElem)
+
+    // The note scrolls inside the editor, the handle's layer doesn't: follow the block on scroll too
+    const rootElement = editor.getRootElement()
+    if (!draggableBlockElem || !rootElement) {
+      return
+    }
+    const followBlock = () => setMenuPosition(draggableBlockElem, menu, anchorElem)
+    rootElement.addEventListener('scroll', followBlock, { passive: true })
+    return () => rootElement.removeEventListener('scroll', followBlock)
+  }, [anchorElem, draggableBlockElem, editor])
 
   const insertDraggedNode = useCallback(
     (draggedNode: LexicalNode, targetNode: LexicalNode, targetBlockElem: HTMLElement, pageY: number) => {
