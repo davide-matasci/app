@@ -115,7 +115,8 @@ function mapToTableCells(textContent: string): Array<TableCellNode> | null {
   if (!match || !match[1]) {
     return null
   }
-  return match[1].split('|').map((text) => createTableCell(text))
+  // Cells are split on unescaped pipes; export escapes pipes inside a cell as \|
+  return match[1].split(/(?<!\\)\|/).map((text) => createTableCell(text.replace(/\\\|/g, '|')))
 }
 
 export const TABLE: ElementTransformer = {
@@ -137,7 +138,9 @@ export const TABLE: ElementTransformer = {
       for (const cell of row.getChildren()) {
         // It's TableCellNode so it's just to make flow happy
         if ($isTableCellNode(cell)) {
-          rowOutput.push($convertToMarkdownString(MarkdownTransformers, cell).replace(/\n/g, '\\n'))
+          rowOutput.push(
+            $convertToMarkdownString(MarkdownTransformers, cell).replace(/\n/g, '\\n').replace(/\|/g, '\\|'),
+          )
           if (cell.__headerState === TableCellHeaderStates.ROW) {
             isHeaderRow = true
           }

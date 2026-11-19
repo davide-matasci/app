@@ -83,6 +83,16 @@ export class InlineFileNode extends DecoratorBlockNode {
         if (domNode.tagName !== 'IMG') {
           return null
         }
+        /**
+         * Only embedded image data (or one this node exported): a plain web image is a remote
+         * image. Both nodes claim <img> at the same priority, and this one is registered later,
+         * so without this check every pasted web image became an inline file.
+         */
+        const src = domNode.getAttribute('src') || ''
+        const isEmbedded = src.startsWith('data:') || src.startsWith('blob:') || domNode.hasAttribute('data-mime-type')
+        if (!isEmbedded) {
+          return null
+        }
         return {
           conversion: () => {
             if (!(domNode instanceof HTMLImageElement)) {
@@ -111,9 +121,11 @@ export class InlineFileNode extends DecoratorBlockNode {
             if (!(domNode instanceof HTMLSourceElement)) {
               return null
             }
-            const mimeType = domNode.type || parent.tagName === 'VIDEO' ? 'video/mp4' : 'audio/mp3'
+            const mimeType = domNode.type || (parent.tagName === 'VIDEO' ? 'video/mp4' : 'audio/mp3')
             const src = domNode.src
-            const fileName = domNode.getAttribute('data-file-name') || undefined
+            // exportDOM puts the name on the <audio>/<video> element
+            const fileName =
+              domNode.getAttribute('data-file-name') || parent.getAttribute('data-file-name') || undefined
             return {
               node: $createInlineFileNode(src, mimeType, fileName),
             }

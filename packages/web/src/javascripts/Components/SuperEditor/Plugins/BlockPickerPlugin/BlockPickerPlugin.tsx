@@ -87,9 +87,8 @@ export default function BlockPickerMenuPlugin({ popoverZIndex }: { popoverZIndex
       ? [
           ...dynamicOptions,
           ...baseOptions.filter((option) => {
-            return new RegExp(queryString, 'gi').exec(option.title) || option.keywords != null
-              ? option.keywords.some((keyword) => new RegExp(queryString, 'gi').exec(keyword))
-              : false
+            const regex = new RegExp(queryString, 'i')
+            return regex.test(option.title) || (option.keywords ?? []).some((keyword) => regex.test(keyword))
           }),
         ]
       : baseOptions

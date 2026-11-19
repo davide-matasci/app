@@ -292,9 +292,11 @@ export const SuperEditor: FunctionComponent<Props> = ({
                 />
                 <NodeObserverPlugin nodeType={BubbleNode} onRemove={handleBubbleRemove} />
                 <NodeObserverPlugin nodeType={FileNode} onRemove={handleBubbleRemove} />
-                {readonly === undefined && (
-                  <ReadonlyPlugin note={note.current} forceReadonly={featureStatus !== FeatureStatus.Entitled} />
-                )}
+                {/* Always mounted: it applies the note's lock, which notes in shared vaults (readonly = false) have too */}
+                <ReadonlyPlugin
+                  note={note.current}
+                  forceReadonly={Boolean(readonly) || featureStatus !== FeatureStatus.Entitled}
+                />
                 <AutoFocusPlugin isEnabled={controller.isTemplateNote} />
                 <BlockPickerMenuPlugin />
                 <NoteFromSelectionPlugin currentNote={note.current} />

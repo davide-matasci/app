@@ -36,6 +36,8 @@ const InlineFileComponent = ({ className, src, mimeType, fileName, format, setFo
   const [isSaving, setIsSaving] = useState(false)
   const saveToFilesAndReplaceNode = useCallback(async () => {
     setIsSaving(true)
+    // The note this node is in, as of the click: another note can be open by the time the upload finishes
+    const note = application.linkingController.activeItem
     try {
       const blob = await fetch(src).then((response) => response.blob())
       const file = new File([blob], fileName || application.generateUUID(), { type: mimeType })
@@ -49,11 +51,21 @@ const InlineFileComponent = ({ className, src, mimeType, fileName, format, setFo
       }
 
       editor.update(() => {
-        const fileNode = $createFileNode(uploadedFile.uuid)
-        node.replace(fileNode)
+        if (node.isAttached()) {
+          node.replace($createFileNode(uploadedFile.uuid))
+        }
       })
 
-      void linkingController.linkItemToSelectedItem(uploadedFile)
+      if (note) {
+        void linkingController.linkItems(note, uploadedFile)
+        if (note.protected) {
+          void application.changeAndSaveItem.execute(uploadedFile, (mutator) => {
+            mutator.protected = true
+          })
+        }
+      } else {
+        void linkingController.linkItemToSelectedItem(uploadedFile)
+      }
     } catch (error) {
       console.error(error)
     } finally {
