@@ -30,7 +30,8 @@ tar cf - --exclude=.git --exclude='*.ts' --exclude='*.map' . | tar xf - -C "$WOR
 cd "$WORK/sn"
 yarn workspaces focus @standardnotes/home-server --production
 rm -rf packages/home-server/dist/data packages/home-server/.env
-cp "$HERE/start.sh" "$HERE/env.example" "$HERE/activate-premium.js" .
+sh "$HERE/patch-sqlite-temp-store.sh" "$WORK/sn"
+cp "$HERE/start.sh" "$HERE/env.example" "$HERE/activate-premium.js" "$HERE/patch-sqlite-temp-store.sh" .
 echo "$SERVER_REF" > SERVER_REF
 
 arch="$(uname -m)"
