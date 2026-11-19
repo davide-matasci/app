@@ -13,6 +13,7 @@ import {
   MaxGroupDepth,
   OperatorId,
   OperatorsForFieldType,
+  formatPredicateText,
 } from './Model/SmartViewConditions'
 import { countMatchingNotes } from './Model/countMatchingNotes'
 
@@ -123,8 +124,13 @@ const NodeEditor = observer(({ controller, node, parent, depth }: NodeProps) => 
     return (
       <div className="flex items-center gap-2 rounded border border-dashed border-border px-2 py-1.5 text-sm">
         <Icon type="lock" size="small" className="shrink-0 text-passive-1" />
-        <span className="flex-grow text-passive-0">
-          {c('Smart view builder').t`Custom condition (kept as is; can't be edited here)`}
+        <span className="flex min-w-0 flex-grow flex-col">
+          <span className="text-passive-0">
+            {c('Smart view builder').t`Custom condition (kept as is; can't be edited here)`}
+          </span>
+          <code className="select-text break-all font-mono text-xs text-text">
+            {formatPredicateText(node.predicate)}
+          </code>
         </span>
         {removeButton}
       </div>

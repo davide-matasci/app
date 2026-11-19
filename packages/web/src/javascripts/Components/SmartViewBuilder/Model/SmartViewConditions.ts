@@ -6,7 +6,7 @@ import { PredicateKeypath, PredicateKeypathTypes, getPredicateKeypathLabels } fr
  * An editable form of a smart view's predicate: nested groups of conditions. It converts
  * to and from the stored predicate JSON (which is unchanged, so views keep working in
  * every app). Anything the builder can't represent is kept verbatim as a read-only
- * "custom" node, never shown as JSON.
+ * "custom" node, shown as compact text (formatPredicateText), never as JSON.
  */
 
 export const MaxGroupDepth = 3
@@ -393,4 +393,37 @@ export function unitLabel(unit: DateUnit, amount: number): string {
 export function groupDepth(group: ConditionGroup): number {
   const childDepths = group.children.map((child) => (child.type === 'group' ? groupDepth(child) : 0))
   return 1 + Math.max(0, ...childDepths)
+}
+
+/**
+ * A custom (non-editable) condition as compact text, e.g. `title startsWith "x" and (a = 1 or b = 2)`:
+ * exactly what's stored, readable without JSON syntax.
+ */
+export function formatPredicateText(predicate: PredicateJsonForm): string {
+  const isPredicate = (value: unknown): value is PredicateJsonForm =>
+    typeof value === 'object' && value !== null && !Array.isArray(value) && 'operator' in value
+  const isGroup = (value: PredicateJsonForm) => !('keypath' in value && value.keypath)
+  const formatValue = (value: unknown): string => {
+    if (isPredicate(value)) {
+      return `(${formatPredicateText(value)})`
+    }
+    if (Array.isArray(value)) {
+      return `[${value.map(formatValue).join(', ')}]`
+    }
+    return typeof value === 'string' ? JSON.stringify(value) : String(value)
+  }
+  /** Simple conditions and "not" inside a group need no parentheses; nested and/or groups do. */
+  const formatChild = (child: unknown) => {
+    const needsParentheses = !isPredicate(child) || (isGroup(child) && child.operator !== 'not')
+    return needsParentheses ? formatValue(child) : formatPredicateText(child)
+  }
+
+  const { keypath, operator, value } = predicate as { keypath?: string; operator: string; value: unknown }
+  if (!keypath && (operator === 'and' || operator === 'or') && Array.isArray(value)) {
+    return value.map(formatChild).join(` ${operator} `)
+  }
+  if (!keypath && operator === 'not') {
+    return `not ${formatValue(Array.isArray(value) ? value[0] : value)}`
+  }
+  return `${keypath ?? ''} ${operator} ${formatValue(value)}`.trim()
 }

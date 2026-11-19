@@ -60,7 +60,8 @@ const AddSmartViewModal = ({ controller, platform }: Props) => {
 
   return (
     <Modal title={c('B4.Notes.TagsLinkedItems.Action').t`Add Smart View`} close={closeModal} actions={modalActions}>
-      <div className="px-4 py-4">
+      {/* Labels and controls aren't text to select (a long press on iPad selected across them); inputs still are */}
+      <div className="select-none px-4 py-4 [&_input]:select-text [&_textarea]:select-text">
         <div className="flex h-full flex-col gap-4">
           <div className="flex items-center gap-2.5">
             <div className="text-sm font-semibold">{c('B4.Notes.TagsLinkedItems.Label').t`Title:`}</div>

@@ -1,5 +1,6 @@
 import { PredicateJsonForm, predicateFromJson } from '@standardnotes/snjs'
 import {
+  formatPredicateText,
   ConditionGroup,
   DescribeContext,
   MaxGroupDepth,
@@ -134,5 +135,27 @@ describe('smart view conditions', () => {
     expect(newCondition('created_at').operatorId).toBe('withinLast')
     expect(newCondition('tags').operatorId).toBe('hasTag')
     expect(MaxGroupDepth).toBe(3)
+  })
+})
+
+describe('formatPredicateText', () => {
+  it('shows a custom predicate as compact text, nested groups in parentheses', () => {
+    const predicate = {
+      operator: 'and',
+      value: [
+        { keypath: 'title', operator: 'startsWith', value: 'x' },
+        {
+          operator: 'or',
+          value: [
+            { keypath: 'content.appData.foo', operator: '=', value: true },
+            { operator: 'not', value: { keypath: 'tags', operator: 'includes', value: ['a', 'b'] } },
+          ],
+        },
+      ],
+    } as unknown as PredicateJsonForm
+
+    expect(formatPredicateText(predicate)).toBe(
+      'title startsWith "x" and (content.appData.foo = true or not (tags includes ["a", "b"]))',
+    )
   })
 })

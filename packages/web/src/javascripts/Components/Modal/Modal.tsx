@@ -118,47 +118,16 @@ const Modal = ({
             )}
             <div className="flex items-center justify-center gap-2 overflow-hidden text-center font-semibold text-text md:flex-grow md:text-left md:text-lg">
               {extraActions.length > 0 && (
-                <>
-                  <MobileModalAction
-                    type="secondary"
-                    action={() => setShowAdvanced((show) => !show)}
-                    slot="left"
-                    ref={advancedOptionRef}
-                  >
-                    <div className="rounded-full border border-border p-0.5">
-                      <Icon type="more" />
-                    </div>
-                  </MobileModalAction>
-                  <Popover
-                    title={c('B2.NavSharedUI.Title').t`Advanced`}
-                    open={showAdvanced}
-                    anchorElement={advancedOptionRef}
-                    disableMobileFullscreenTakeover={true}
-                    togglePopover={() => setShowAdvanced((show) => !show)}
-                    align="start"
-                    portal={false}
-                    className="!fixed divide-y divide-border border border-border"
-                  >
-                    {extraActions
-                      .filter((action) => action.type !== 'cancel')
-                      .map((action, index) => (
-                        <button
-                          className={classNames(
-                            'p-2 text-base font-semibold hover:bg-contrast focus:bg-info-backdrop focus:shadow-none focus:outline-none',
-                            action.type === 'destructive' && 'text-danger',
-                          )}
-                          key={index}
-                          onClick={() => {
-                            action.onClick()
-                            setShowAdvanced(false)
-                          }}
-                          disabled={action.disabled}
-                        >
-                          {action.label}
-                        </button>
-                      ))}
-                  </Popover>
-                </>
+                <MobileModalAction
+                  type="secondary"
+                  action={() => setShowAdvanced((show) => !show)}
+                  slot="left"
+                  ref={advancedOptionRef}
+                >
+                  <div className="rounded-full border border-border p-0.5">
+                    <Icon type="more" />
+                  </div>
+                </MobileModalAction>
               )}
               <span className="overflow-hidden text-ellipsis whitespace-nowrap ">{title}</span>
             </div>
@@ -178,6 +147,38 @@ const Modal = ({
               </MobileModalAction>
             ) : null}
           </MobileModalHeader>
+          {/* Outside the title row, whose overflow-hidden clipped this menu so it never showed */}
+          {extraActions.length > 0 && (
+            <Popover
+              title={c('B2.NavSharedUI.Title').t`Advanced`}
+              open={showAdvanced}
+              anchorElement={advancedOptionRef}
+              disableMobileFullscreenTakeover={true}
+              togglePopover={() => setShowAdvanced((show) => !show)}
+              align="start"
+              portal={false}
+              className="!fixed divide-y divide-border border border-border"
+            >
+              {extraActions
+                .filter((action) => action.type !== 'cancel')
+                .map((action, index) => (
+                  <button
+                    className={classNames(
+                      'p-2 text-base font-semibold hover:bg-contrast focus:bg-info-backdrop focus:shadow-none focus:outline-none',
+                      action.type === 'destructive' && 'text-danger',
+                    )}
+                    key={index}
+                    onClick={() => {
+                      action.onClick()
+                      setShowAdvanced(false)
+                    }}
+                    disabled={action.disabled}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+            </Popover>
+          )}
         </div>
       )}
       <div className={classNames('flex-grow overflow-y-auto', className)}>{children}</div>
