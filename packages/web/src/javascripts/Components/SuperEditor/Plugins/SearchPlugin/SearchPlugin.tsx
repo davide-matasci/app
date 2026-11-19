@@ -294,6 +294,45 @@ export function SearchPlugin() {
     exit: TranslateToTopAnimation,
   })
 
+  /**
+   * The panel floats over the top of the editor, so while it's open the editor gets extra top
+   * padding: otherwise it covers the first lines of the note.
+   */
+  const [panelElement, setPanelElement] = useState<HTMLDivElement | null>(null)
+  const setPanelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setElement(node)
+      setPanelElement(node)
+    },
+    [setElement],
+  )
+  useEffect(() => {
+    const rootElement = editor.getRootElement()
+    if (!panelElement || !rootElement) {
+      return
+    }
+    const originalPaddingTop = rootElement.style.paddingTop
+    const basePaddingTop = parseFloat(getComputedStyle(rootElement).paddingTop) || 0
+    const updatePadding = () => {
+      // Layout offsets, not the bounding rect: the panel slides in with a transform
+      const container = panelElement.offsetParent
+      if (!container) {
+        return
+      }
+      const panelBottom = panelElement.offsetTop + panelElement.offsetHeight
+      const rootTop = rootElement.getBoundingClientRect().top - container.getBoundingClientRect().top
+      const overlap = panelBottom - rootTop
+      rootElement.style.paddingTop = overlap > 0 ? `${overlap + basePaddingTop}px` : originalPaddingTop
+    }
+    updatePadding()
+    const observer = new ResizeObserver(updatePadding)
+    observer.observe(panelElement)
+    return () => {
+      observer.disconnect()
+      rootElement.style.paddingTop = originalPaddingTop
+    }
+  }, [editor, panelElement])
+
   const focusOnMount = useCallback((node: HTMLInputElement | null) => {
     if (node) {
       node.focus()
@@ -325,7 +364,7 @@ export function SearchPlugin() {
           'absolute left-2 right-6 top-2 z-10 flex select-none rounded border border-border bg-default font-sans md:left-auto',
           isEditable ? 'md:top-13' : 'md:top-3',
         )}
-        ref={setElement}
+        ref={setPanelRef}
       >
         {isEditable && (
           <button
