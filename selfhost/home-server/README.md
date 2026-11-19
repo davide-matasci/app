@@ -104,6 +104,20 @@ linux --root /data/alpine sh /opt/sn/start.sh restart
 
 Then sign out and back in on the web app.
 
+## A new device doesn't download everything
+
+`sync-diag.js` shows, read-only, how the server would page a full download of
+each account. It prints only counts, sizes and timestamps. It flags pages that
+are very large, and timestamps shared by 150+ items, which paging can't get
+past.
+
+```sh
+# bundles built before this script existed: fetch it once
+curl -fL -o /data/alpine/opt/sn/sync-diag.js \
+  https://raw.githubusercontent.com/davide-matasci/app/main/selfhost/home-server/sync-diag.js
+linux --root /data/alpine sh -c 'cd /var/lib/sn && node --require /opt/sn/.pnp.cjs /opt/sn/sync-diag.js'
+```
+
 ## Backups
 
 The whole state is `/data/alpine/var/lib/sn` (the SQLite database and
