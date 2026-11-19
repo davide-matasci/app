@@ -38,6 +38,8 @@ const RemoteImageComponent = ({ className, src, alt, node, format, nodeKey, setF
 
   const fetchAndUploadImage = useCallback(async () => {
     setIsSaving(true)
+    // The note this node is in, as of the click: another note can be open by the time the upload finishes
+    const note = application.linkingController.activeItem
     try {
       const response = await fetch(src)
 
@@ -57,11 +59,21 @@ const RemoteImageComponent = ({ className, src, alt, node, format, nodeKey, setF
       }
 
       editor.update(() => {
-        const fileNode = $createFileNode(uploadedFile.uuid)
-        node.replace(fileNode)
+        if (node.isAttached()) {
+          node.replace($createFileNode(uploadedFile.uuid))
+        }
       })
 
-      void linkingController.linkItemToSelectedItem(uploadedFile)
+      if (note) {
+        void linkingController.linkItems(note, uploadedFile)
+        if (note.protected) {
+          void application.changeAndSaveItem.execute(uploadedFile, (mutator) => {
+            mutator.protected = true
+          })
+        }
+      } else {
+        void linkingController.linkItemToSelectedItem(uploadedFile)
+      }
     } catch (error) {
       console.error(error)
     } finally {

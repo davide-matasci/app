@@ -104,7 +104,6 @@ function getTableColumnsSize(table: TableNode) {
 }
 
 function createTableCell(textContent: string): TableCellNode {
-  textContent = textContent.replace(/\\n/g, '\n')
   const cell = $createTableCellNode(TableCellHeaderStates.NO_STATUS)
   $convertFromMarkdownString(textContent, MarkdownTransformers, cell)
   return cell
@@ -115,7 +114,33 @@ function mapToTableCells(textContent: string): Array<TableCellNode> | null {
   if (!match || !match[1]) {
     return null
   }
-  return match[1].split('|').map((text) => createTableCell(text))
+  return splitTableRowCells(match[1]).map((text) => createTableCell(text))
+}
+
+/** Escapes a cell's markdown for a table row: `\` as `\\`, `|` as `\|` and a line break as `\n`. */
+function escapeTableCell(markdown: string): string {
+  return markdown.replace(/[\\|]/g, (char) => `\\${char}`).replace(/\n/g, '\\n')
+}
+
+/** Splits a table row on unescaped `|`, unescapes each cell (see escapeTableCell) and trims its padding. */
+function splitTableRowCells(row: string): string[] {
+  const cells: string[] = []
+  let cell = ''
+  for (let i = 0; i < row.length; i++) {
+    const char = row[i]
+    const next = row[i + 1]
+    if (char === '\\' && (next === '\\' || next === '|' || next === 'n')) {
+      cell += next === 'n' ? '\n' : next
+      i++
+    } else if (char === '|') {
+      cells.push(cell.trim())
+      cell = ''
+    } else {
+      cell += char
+    }
+  }
+  cells.push(cell.trim())
+  return cells
 }
 
 export const TABLE: ElementTransformer = {
@@ -137,7 +162,7 @@ export const TABLE: ElementTransformer = {
       for (const cell of row.getChildren()) {
         // It's TableCellNode so it's just to make flow happy
         if ($isTableCellNode(cell)) {
-          rowOutput.push($convertToMarkdownString(MarkdownTransformers, cell).replace(/\n/g, '\\n'))
+          rowOutput.push(escapeTableCell($convertToMarkdownString(MarkdownTransformers, cell)))
           if (cell.__headerState === TableCellHeaderStates.ROW) {
             isHeaderRow = true
           }

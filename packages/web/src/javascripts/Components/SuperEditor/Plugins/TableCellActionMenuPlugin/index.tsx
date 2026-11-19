@@ -250,11 +250,13 @@ function TableActionMenu({ onClose, tableCellNode: _tableCellNode, cellMerge }: 
   const insertTableRowAtSelection = useCallback(
     (shouldInsertAfter: boolean) => {
       editor.update(() => {
-        $insertTableRowAtSelection(shouldInsertAfter)
+        for (let i = 0; i < selectionCounts.rows; i++) {
+          $insertTableRowAtSelection(shouldInsertAfter)
+        }
         onClose()
       })
     },
-    [editor, onClose],
+    [editor, onClose, selectionCounts.rows],
   )
 
   const insertTableColumnAtSelection = useCallback(

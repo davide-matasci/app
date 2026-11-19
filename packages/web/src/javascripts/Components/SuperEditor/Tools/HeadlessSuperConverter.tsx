@@ -6,6 +6,7 @@ import {
   $insertNodes,
   LexicalEditor,
   LexicalNode,
+  ParagraphNode,
   SerializedLexicalNode,
 } from 'lexical'
 import BlocksEditorTheme from '../Lexical/Theme/Theme'
@@ -22,6 +23,9 @@ import { $dfs } from '@lexical/utils'
 import { $isFileNode } from '../Plugins/EncryptedFilePlugin/Nodes/FileUtils'
 import { $generateNodesFromSerializedNodes, $insertGeneratedNodes } from '@lexical/clipboard'
 import { highlightHtmlImport } from '../Lexical/Utils/highlightHtmlImport'
+
+/** Nodes that can't be top-level in Super and flow together within a line. */
+const InlineNodeTypes = ['text', 'link', 'autolink', 'linebreak', 'hashtag']
 
 export class HeadlessSuperConverter implements SuperConverterServiceInterface {
   private importEditor: LexicalEditor
@@ -97,6 +101,8 @@ export class HeadlessSuperConverter implements SuperConverterServiceInterface {
           return
         }
         const filenameCounts: Record<string, number> = {}
+        /** The same file embedded twice gets the same name, matching the single copy in the export folder. */
+        const exportNameByFileUuid: Record<string, string> = {}
         Promise.all(
           $dfs().map(async ({ node: fileNode }) => {
             if (!$isFileNode(fileNode)) {
@@ -122,14 +128,20 @@ export class HeadlessSuperConverter implements SuperConverterServiceInterface {
             } else {
               this.exportEditor.update(
                 () => {
-                  filenameCounts[fileItem.name] =
-                    filenameCounts[fileItem.name] == undefined ? 0 : filenameCounts[fileItem.name] + 1
+                  let name = exportNameByFileUuid[fileItem.uuid]
 
-                  let name = fileItem.name
+                  if (!name) {
+                    filenameCounts[fileItem.name] =
+                      filenameCounts[fileItem.name] == undefined ? 0 : filenameCounts[fileItem.name] + 1
 
-                  if (filenameCounts[name] > 0) {
-                    const { name: _name, ext } = parseFileName(name)
-                    name = `${_name}-${fileItem.uuid}.${ext}`
+                    name = fileItem.name
+
+                    if (filenameCounts[name] > 0) {
+                      const { name: _name, ext } = parseFileName(name)
+                      name = `${_name}-${fileItem.uuid}.${ext}`
+                    }
+
+                    exportNameByFileUuid[fileItem.uuid] = name
                   }
 
                   const fileExportNode = $createFileExportNode(name, fileItem.mimeType)
@@ -230,19 +242,24 @@ export class HeadlessSuperConverter implements SuperConverterServiceInterface {
             const dom = parser.parseFromString(otherFormatString, 'text/html')
             const generatedNodes = $generateNodesFromDOM(this.importEditor, dom)
             const nodesToInsert: LexicalNode[] = []
+            /** Consecutive inline nodes (e.g. `Hello <a>link</a> world`) share one paragraph. */
+            let inlineParagraph: ParagraphNode | undefined
             generatedNodes.forEach((node) => {
               const type = node.getType()
 
-              // Wrap text & link nodes with paragraph since they can't
+              if (InlineNodeTypes.includes(type)) {
+                if (!inlineParagraph) {
+                  inlineParagraph = $createParagraphNode()
+                  nodesToInsert.push(inlineParagraph)
+                }
+                inlineParagraph.append(node)
+                return
+              }
+              inlineParagraph = undefined
+
+              // Wrap images & files with paragraph since they can't
               // be top-level nodes in Super
-              if (
-                type === 'text' ||
-                type === 'link' ||
-                type === 'linebreak' ||
-                type === 'unencrypted-image' ||
-                type === 'inline-file' ||
-                type === 'snfile'
-              ) {
+              if (type === 'unencrypted-image' || type === 'inline-file' || type === 'snfile') {
                 const paragraphNode = $createParagraphNode()
                 paragraphNode.append(node)
                 nodesToInsert.push(paragraphNode)
