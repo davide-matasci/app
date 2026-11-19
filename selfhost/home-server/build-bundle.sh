@@ -31,7 +31,8 @@ cd "$WORK/sn"
 yarn workspaces focus @standardnotes/home-server --production
 rm -rf packages/home-server/dist/data packages/home-server/.env
 sh "$HERE/patch-sqlite-temp-store.sh" "$WORK/sn"
-cp "$HERE/start.sh" "$HERE/env.example" "$HERE/activate-premium.js" "$HERE/patch-sqlite-temp-store.sh" .
+cp "$HERE/start.sh" "$HERE/env.example" "$HERE/activate-premium.js" "$HERE/sync-diag.js" \
+  "$HERE/sqlite-temp-test.js" "$HERE/patch-sqlite-temp-store.sh" .
 echo "$SERVER_REF" > SERVER_REF
 
 arch="$(uname -m)"

@@ -55,7 +55,12 @@ const ContentListHeader = ({
   const isTouchScreen = !useMediaQuery(MediaQueryBreakpoints.pointerFine)
   const isTablet = matchesMd && isTouchScreen
 
-  const [syncSubtitle, setSyncSubtitle] = useState('')
+  /** Starts from the current status: the header remounts (e.g. after the account menu) while the first sync runs. */
+  const [syncSubtitle, setSyncSubtitle] = useState(() => {
+    const isFirstSyncRunning =
+      application.sync.getSyncStatus().syncInProgress && !application.sync.completedOnlineDownloadFirstSync
+    return isFirstSyncRunning ? c('B3.Notes.NoteList.Status').t`Syncing...` : ''
+  })
   const [outOfSync, setOutOfSync] = useState(false)
   const showSyncSubtitle = isMobileScreen && (!!syncSubtitle || outOfSync)
 

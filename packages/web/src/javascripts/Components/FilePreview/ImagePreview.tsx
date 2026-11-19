@@ -53,7 +53,12 @@ const ImagePreview: FunctionComponent<Props> = ({
     }
   }, [objectUrl])
 
-  const widthIfEmbedded = imageWidth * (imageZoomPercent / PercentageDivisor)
+  /**
+   * In Super, the size is relative to the image as it fits the editor (its natural width, or the editor's width when it
+   * is wider). Relative to the natural width alone, any image wider than the editor stayed clamped to the editor's width,
+   * so changing the size did nothing until it got very small.
+   */
+  const widthIfEmbedded = `calc(min(${imageWidth}px, 100%) * ${imageZoomPercent / PercentageDivisor})`
 
   const imageResizer = (
     <>
@@ -161,7 +166,7 @@ const ImagePreview: FunctionComponent<Props> = ({
       <div
         className="relative flex h-full w-full items-center justify-center overflow-auto"
         style={{
-          width: isEmbeddedInSuper ? `${widthIfEmbedded}px` : '',
+          width: isEmbeddedInSuper ? widthIfEmbedded : '',
           aspectRatio: isEmbeddedInSuper ? `${imageWidth} / ${imageHeight}` : '',
         }}
       >
