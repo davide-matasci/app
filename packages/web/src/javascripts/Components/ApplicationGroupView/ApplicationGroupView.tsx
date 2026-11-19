@@ -149,8 +149,9 @@ class ApplicationGroupView extends Component<Props, State> {
 export default ApplicationGroupView
 
 function isIPadHomeScreenWebApp(): boolean {
+  // iPadOS identifies as "Macintosh" (desktop-class browsing); an iPhone's "like Mac OS X" must not match
   const isIPad =
-    /iPad/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1)
+    /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
   const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
