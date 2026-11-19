@@ -72,7 +72,7 @@ const PreferencesView: FunctionComponent<PreferencesProps> = ({ application, clo
           data-preferences-header
         >
           <div className="hidden h-8 w-8 md:block" />
-          <h1 className="text-base font-bold md:text-lg">
+          <h1 className="window-controls-clear-fullscreen text-base font-bold md:text-lg">
             {jtString(c('B6.Preferences.Other.Info').jt`Your preferences for ${AppName}`)}
           </h1>
           <RoundIconButton

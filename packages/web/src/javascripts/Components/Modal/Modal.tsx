@@ -103,7 +103,7 @@ const Modal = ({
             hasTopInset ? 'pb-1.5 pt-safe-top' : 'py-1.5',
           )}
         >
-          <MobileModalHeader className="flex-row items-center justify-between md:flex md:gap-0">
+          <MobileModalHeader className="window-controls-clear-fullscreen flex-row items-center justify-between md:flex md:gap-0">
             {leftSlotAction ? (
               <MobileModalAction
                 type={leftSlotAction.type}
