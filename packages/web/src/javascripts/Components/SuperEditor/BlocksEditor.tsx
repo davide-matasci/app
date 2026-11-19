@@ -23,7 +23,6 @@ import { MarkdownTransformers } from './MarkdownTransformers'
 import { RemoveBrokenTablesPlugin } from './Plugins/TablePlugin'
 import TableActionMenuPlugin from './Plugins/TableCellActionMenuPlugin'
 import ToolbarPlugin from './Plugins/ToolbarPlugin/ToolbarPlugin'
-import { useMediaQuery, MutuallyExclusiveMediaQueryBreakpoints } from '@/Hooks/useMediaQuery'
 import RemoteImagePlugin from './Plugins/RemoteImagePlugin/RemoteImagePlugin'
 import CodeOptionsPlugin from './Plugins/CodeOptionsPlugin/CodeOptions'
 import { SearchPlugin } from './Plugins/SearchPlugin/SearchPlugin'
@@ -80,8 +79,6 @@ export const BlocksEditor: FunctionComponent<BlocksEditorProps> = ({
     }
   }
 
-  const isMobile = useMediaQuery(MutuallyExclusiveMediaQueryBreakpoints.sm)
-
   const editorPlaceholder = useMemo(() => {
     const slashKey = <span className="rounded bg-passive-4-opacity-variant p-0.5">/</span>
 
@@ -94,7 +91,8 @@ export const BlocksEditor: FunctionComponent<BlocksEditorProps> = ({
 
   return (
     <>
-      {!isMobile && <ToolbarPlugin />}
+      {/* At the top on every device: nothing the system shows (iPad shortcut bar, keyboards) covers it there */}
+      <ToolbarPlugin />
       <div className="relative min-h-0 flex-grow">
         <RichTextPlugin
           contentEditable={
@@ -118,7 +116,6 @@ export const BlocksEditor: FunctionComponent<BlocksEditorProps> = ({
           ErrorBoundary={LexicalErrorBoundary}
         />
       </div>
-      {isMobile && <ToolbarPlugin />}
       <ListPlugin />
       <MarkdownShortcutPlugin transformers={MarkdownTransformers} />
       <TablePlugin hasCellMerge />

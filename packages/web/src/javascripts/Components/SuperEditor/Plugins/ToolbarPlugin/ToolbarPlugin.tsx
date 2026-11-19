@@ -136,7 +136,7 @@ const ToolbarButton = forwardRef(
         showOnMobile
         showOnHover
         label={name}
-        side="top"
+        side={isMobile ? 'bottom' : 'top'}
         portalElement={isMobile ? parentElement : undefined}
         documentElement={parentElement}
       >
@@ -564,51 +564,7 @@ const ToolbarPlugin = () => {
 
   const dismissButtonRef = useRef<HTMLButtonElement>(null)
 
-  const [isFocusInEditor, setIsFocusInEditor] = useState(false)
-  const [isFocusInToolbar, setIsFocusInToolbar] = useState(false)
-  const canShowToolbarOnMobile = isFocusInEditor || isFocusInToolbar
   const canShowAllItems = isMobile || isToolbarFixedToTop
-
-  useEffect(() => {
-    const container = containerRef.current
-    const rootElement = editor.getRootElement()
-
-    if (!rootElement) {
-      return
-    }
-
-    const handleToolbarFocus = () => setIsFocusInToolbar(true)
-    const handleToolbarBlur = () => setIsFocusInToolbar(false)
-
-    const handleRootFocus = () => setIsFocusInEditor(true)
-    const handleRootBlur = (event: FocusEvent) => {
-      const elementToBeFocused = event.relatedTarget as Node
-      const containerContainsElementToFocus = container?.contains(elementToBeFocused)
-      const linkEditorContainsElementToFocus = document
-        .getElementById(ElementIds.SuperEditor)
-        ?.contains(elementToBeFocused)
-      const willFocusDismissButton = dismissButtonRef.current === elementToBeFocused
-      if ((containerContainsElementToFocus || linkEditorContainsElementToFocus) && !willFocusDismissButton) {
-        return
-      }
-      setIsFocusInEditor(false)
-    }
-
-    rootElement.addEventListener('focus', handleRootFocus)
-    rootElement.addEventListener('blur', handleRootBlur)
-
-    if (container) {
-      container.addEventListener('focus', handleToolbarFocus)
-      container.addEventListener('blur', handleToolbarBlur)
-    }
-
-    return () => {
-      rootElement.removeEventListener('focus', handleRootFocus)
-      rootElement.removeEventListener('blur', handleRootBlur)
-      container?.removeEventListener('focus', handleToolbarFocus)
-      container?.removeEventListener('blur', handleToolbarBlur)
-    }
-  }, [editor])
 
   const toolbarRef = useRef<HTMLDivElement>(null)
   const toolbarStore = useToolbarStore()
@@ -658,7 +614,6 @@ const ToolbarPlugin = () => {
         className={classNames(
           'bg-contrast',
           !isEditable ? 'hidden opacity-0' : '',
-          isMobile && !canShowToolbarOnMobile ? 'hidden' : '',
           !isMobile && 'border-b border-border bg-default',
           !isMobile
             ? !isToolbarFixedToTop
@@ -687,7 +642,7 @@ const ToolbarPlugin = () => {
             linkTextNode={linkTextNode}
           />
         )}
-        <div className="flex w-full flex-shrink-0 border-t border-border md:border-0">
+        <div className="flex w-full flex-shrink-0 border-b border-border md:border-0">
           <Toolbar
             className="super-toolbar flex items-center gap-1 overflow-x-auto px-1 md:flex-wrap"
             ref={toolbarRef}
@@ -844,7 +799,7 @@ const ToolbarPlugin = () => {
         anchorElement={tocAnchorRef}
         open={isTOCOpen}
         togglePopover={() => setIsTOCOpen(!isTOCOpen)}
-        side={isMobile ? 'top' : 'bottom'}
+        side="bottom"
         align="start"
         className="py-1"
         disableMobileFullscreenTakeover
@@ -911,7 +866,7 @@ const ToolbarPlugin = () => {
         anchorElement={textFormatAnchorRef}
         open={isTextFormatMenuOpen}
         togglePopover={() => setIsTextFormatMenuOpen(!isTextFormatMenuOpen)}
-        side={isMobile ? 'top' : 'bottom'}
+        side="bottom"
         align="start"
         className="py-1"
         disableMobileFullscreenTakeover
@@ -961,7 +916,7 @@ const ToolbarPlugin = () => {
         anchorElement={textStyleAnchorRef}
         open={isTextStyleMenuOpen}
         togglePopover={() => setIsTextStyleMenuOpen(!isTextStyleMenuOpen)}
-        side={isMobile ? 'top' : 'bottom'}
+        side="bottom"
         align="start"
         className="py-1"
         disableMobileFullscreenTakeover
@@ -1038,7 +993,7 @@ const ToolbarPlugin = () => {
         anchorElement={alignmentAnchorRef}
         open={isAlignmentMenuOpen}
         togglePopover={() => setIsAlignmentMenuOpen(!isAlignmentMenuOpen)}
-        side={isMobile ? 'top' : 'bottom'}
+        side="bottom"
         align="start"
         className="py-1"
         disableMobileFullscreenTakeover
@@ -1083,7 +1038,7 @@ const ToolbarPlugin = () => {
         anchorElement={insertAnchorRef}
         open={isInsertMenuOpen}
         togglePopover={() => setIsInsertMenuOpen(!isInsertMenuOpen)}
-        side={isMobile ? 'top' : 'bottom'}
+        side="bottom"
         align="start"
         className="py-1"
         disableMobileFullscreenTakeover

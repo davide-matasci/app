@@ -118,7 +118,7 @@ const LinkViewer = ({ isMobile, editor, linkNode, setIsEditingLink }: Props) => 
       className={classNames(
         'absolute z-dropdown-menu rounded-lg border border-border bg-contrast px-2 py-1 shadow-sm shadow-contrast',
         isMobile
-          ? 'bottom-12 left-1/2 w-[calc(100%_-_1rem)] -translate-x-1/2'
+          ? 'left-1/2 top-14 w-[calc(100%_-_1rem)] -translate-x-1/2'
           : 'left-0 top-0 w-auto translate-x-0 opacity-0 translucent-ui:border-[--popover-border-color] translucent-ui:bg-[--popover-background-color] translucent-ui:[backdrop-filter:var(--popover-backdrop-filter)]',
       )}
       ref={linkViewerRef}
