@@ -55,7 +55,7 @@ export class CollapsibleContainerNode extends ElementNode {
     dom.classList.add('Collapsible__container')
     dom.open = this.__open
     dom.addEventListener('toggle', () => {
-      const open = editor.getEditorState().read(() => this.getOpen())
+      const open = editor.read(() => this.getOpen())
       if (open !== dom.open) {
         editor.update(() => this.toggleOpen())
       }
@@ -107,7 +107,8 @@ export class CollapsibleContainerNode extends ElementNode {
   }
 
   getOpen(): boolean {
-    return this.__open
+    // Latest version: the DOM toggle listener holds on to the node instance that created the DOM.
+    return this.getLatest().__open
   }
 
   toggleOpen(): void {

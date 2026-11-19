@@ -267,7 +267,12 @@ export function SearchPlugin() {
     }
     editor.update(
       () => {
-        for (let i = 0; i < results.length; i++) {
+        /**
+         * Last to first: the ranges hold DOM offsets from before any replacement, and the DOM
+         * isn't re-rendered during this update, so replacing an earlier match first would shift
+         * the offsets of later matches in the same text.
+         */
+        for (let i = results.length - 1; i >= 0; i--) {
           const result = results[i]
           if (!result) {
             continue

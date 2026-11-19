@@ -319,4 +319,34 @@ describe('searchInElement', () => {
       expectRange(results[0], [span2.childNodes[0], 0, span2.childNodes[0], 4])
     })
   })
+
+  describe('Partial matches before a real match', () => {
+    const textNode = (text: string) => {
+      const div = createElement('div', { text })
+      return { div, node: div.childNodes[0] }
+    }
+
+    test.each([
+      ['Mississippi', 'issip', 4],
+      ['ababc', 'abc', 2],
+      ['10100', '100', 2],
+      ['aaab', 'aab', 1],
+    ])('"%s" contains "%s"', (text, query, start) => {
+      const { div, node } = textNode(text)
+      const results = searchInElement(div, query, false)
+      expect(results.length).toBe(1)
+      expectRange(results[0], [node, start, node, start + query.length])
+    })
+
+    test('a partial match spanning nodes does not hide a match that starts inside it', () => {
+      const div = createElement('div')
+      const span1 = createElement('span', { text: 'aa' })
+      const span2 = createElement('span', { text: 'ab' })
+      div.append(span1, span2)
+
+      const results = searchInElement(div, 'aab', false)
+      expect(results.length).toBe(1)
+      expectRange(results[0], [span1.childNodes[0], 1, span2.childNodes[0], 2])
+    })
+  })
 })

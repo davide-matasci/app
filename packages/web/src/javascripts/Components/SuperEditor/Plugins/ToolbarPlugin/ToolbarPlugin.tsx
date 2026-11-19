@@ -405,17 +405,24 @@ const ToolbarPlugin = () => {
           return
         }
 
+        /**
+         * Nodes are in document order, so split them at the selection's start and end, not at
+         * anchor and focus: on a backward selection the anchor is the end. These are the
+         * selection's own points, which splitText moves along with the text.
+         */
+        const [start, end] = selection.isBackward() ? [focus, anchor] : [anchor, focus]
+
         nodes.forEach((node, idx) => {
           // We split the first and last node by the selection
           // So that we don't format unselected text inside those nodes
           if ($isTextNode(node)) {
             // Use a separate variable to ensure TS does not lose the refinement
             let textNode = node
-            if (idx === 0 && anchor.offset !== 0) {
-              textNode = textNode.splitText(anchor.offset)[1] || textNode
+            if (idx === 0 && start.offset !== 0) {
+              textNode = textNode.splitText(start.offset)[1] || textNode
             }
             if (idx === nodes.length - 1) {
-              textNode = textNode.splitText(focus.offset)[0] || textNode
+              textNode = textNode.splitText(end.offset)[0] || textNode
             }
 
             if (textNode.__style !== '') {
