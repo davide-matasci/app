@@ -37,3 +37,21 @@
   will-change: transform, opacity;
   transition: opacity 0.15s;
 }
+
+.draggable-block-guide-lines {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+
+.draggable-block-guide-line {
+  pointer-events: none;
+  background: var(--sn-stylekit-info-color);
+  height: 1px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.25;
+}

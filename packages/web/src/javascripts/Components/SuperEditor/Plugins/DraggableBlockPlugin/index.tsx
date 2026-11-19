@@ -175,6 +175,56 @@ function setTargetLine(
   targetLineElem.style.opacity = '.6'
 }
 
+/** Every block a dragged block can be dropped before or after: top-level blocks, and list items within lists. */
+function getDropTargetElements(editor: LexicalEditor): HTMLElement[] {
+  const elements: HTMLElement[] = []
+  for (const key of getTopLevelNodeKeys(editor)) {
+    const element = editor.getElementByKey(key)
+    if (!element) {
+      continue
+    }
+    elements.push(element)
+    if (element.tagName === 'UL' || element.tagName === 'OL') {
+      elements.push(...Array.from(element.querySelectorAll<HTMLElement>('li')))
+    }
+  }
+  return elements
+}
+
+/**
+ * While dragging, draws a faint line at every place the block can be dropped (the active one is
+ * the target line). Positions are taken once; scrolling the editor moves the whole set.
+ */
+function showGuideLines(container: HTMLElement, editor: LexicalEditor, anchorElem: HTMLElement) {
+  const { top: anchorTop, width: anchorWidth } = anchorElem.getBoundingClientRect()
+  const left = TEXT_BOX_HORIZONTAL_PADDING - DRAGGABLE_BLOCK_MENU_LEFT_SPACE
+  const width = anchorWidth - left * 2
+
+  const positions: number[] = []
+  const addPosition = (top: number) => {
+    if (!positions.some((existing) => Math.abs(existing - top) < 3)) {
+      positions.push(top)
+    }
+  }
+  for (const element of getDropTargetElements(editor)) {
+    const { top, bottom } = element.getBoundingClientRect()
+    const { marginTop, marginBottom } = window.getComputedStyle(element)
+    addPosition(top - parseFloat(marginTop) - anchorTop)
+    addPosition(bottom + parseFloat(marginBottom) - anchorTop)
+  }
+
+  container.replaceChildren(
+    ...positions.map((top) => {
+      const line = document.createElement('div')
+      line.className = 'draggable-block-guide-line'
+      line.style.transform = `translate(${left}px, ${top}px)`
+      line.style.width = `${width}px`
+      return line
+    }),
+  )
+  container.style.transform = ''
+}
+
 function hideTargetLine(targetLineElem: HTMLElement | null) {
   if (targetLineElem) {
     targetLineElem.style.opacity = '0'
@@ -186,6 +236,9 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
 
   const menuRef = useRef<HTMLDivElement>(null)
   const targetLineRef = useRef<HTMLDivElement>(null)
+  const guideLinesRef = useRef<HTMLDivElement>(null)
+  /** The block being dragged, dimmed in place, and its scroll position when the drag began. */
+  const dragStateRef = useRef<{ element: HTMLElement; opacity: string; scrollTop: number } | null>(null)
   const [draggableBlockElem, setDraggableBlockElem] = useState<HTMLElement | null>(null)
   const dragDataRef = useRef<string | null>(null)
 
@@ -260,7 +313,20 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
     }
     const nodeKey = editor.read(() => $getNearestNodeFromDOMNode(draggableBlockElem)?.getKey())
     dragDataRef.current = nodeKey ?? null
-    return !!nodeKey
+    if (!nodeKey) {
+      return false
+    }
+
+    dragStateRef.current = {
+      element: draggableBlockElem,
+      opacity: draggableBlockElem.style.opacity,
+      scrollTop: editor.getRootElement()?.scrollTop ?? 0,
+    }
+    draggableBlockElem.style.opacity = '0.4'
+    if (guideLinesRef.current) {
+      showGuideLines(guideLinesRef.current, editor, anchorElem)
+    }
+    return true
   }
 
   function moveDrag(x: number, y: number): void {
@@ -273,6 +339,10 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
       } else if (bottom - y < scrollOffset) {
         rootElement.scrollTop += scrollOffset
       }
+      const dragState = dragStateRef.current
+      if (dragState && guideLinesRef.current) {
+        guideLinesRef.current.style.transform = `translateY(${dragState.scrollTop - rootElement.scrollTop}px)`
+      }
     }
     const targetBlockElem = getBlockElement(anchorElem, editor, new Point(x, y))
     const targetLineElem = targetLineRef.current
@@ -284,6 +354,12 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
 
   function endDrag(drop?: { x: number; y: number }): void {
     hideTargetLine(targetLineRef.current)
+    guideLinesRef.current?.replaceChildren()
+    const dragState = dragStateRef.current
+    if (dragState) {
+      dragState.element.style.opacity = dragState.opacity
+      dragStateRef.current = null
+    }
 
     const dragData = dragDataRef.current
     dragDataRef.current = null
@@ -378,6 +454,7 @@ function useDraggableBlockMenu(editor: LexicalEditor, anchorElem: HTMLElement, i
           <BlockIcon className="pointer-events-none text-text" />
         </div>
       </div>
+      <div className="draggable-block-guide-lines" ref={guideLinesRef} />
       <div className="draggable-block-target-line" ref={targetLineRef} />
     </>,
     anchorElem,
