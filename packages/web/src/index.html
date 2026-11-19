@@ -16,9 +16,6 @@
     <meta name="theme-color" content="#ffffff">
 
     <meta content="Standard Notes" name="apple-mobile-web-app-title"/>
-    <!-- iOS Home Screen web app: iOS draws a solid status bar and the app starts below it (otherwise iOS blurs
-         the app's content under the status bar into a cloudy band). Ignored elsewhere. -->
-    <meta content="default" name="apple-mobile-web-app-status-bar-style"/>
     <meta content="Standard Notes" name="application-name"/>
     <base href="/"></base>
 
@@ -48,5 +45,7 @@
     <link rel="stylesheet" media="all" href="./app.css" debug="false" />
   </head>
   <body>
+    <!-- Keeps iOS/iPadOS 26 from blurring the top of the Home Screen app (see .ios-top-edge-band in _main.scss) -->
+    <div class="ios-top-edge-band" aria-hidden="true"></div>
   </body>
 </html>

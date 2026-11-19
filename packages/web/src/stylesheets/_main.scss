@@ -221,3 +221,30 @@ body.ipad-window-controls {
     }
   }
 }
+
+/**
+ * iOS/iPadOS 26 draws a "scroll edge" blur over the top of Home Screen web apps, unless WebKit finds an opaque,
+ * position: fixed element at the top edge: a real element (not a pseudo-element), spanning at least 90% of the
+ * width and taller than 10px (WebKit samples just below the top edge). This band is that element: its background
+ * color is what WebKit reads, while background-clip: text (it has no text) keeps it invisible.
+ * Same approach as coder/coder#31027, confirmed there on an iPad.
+ */
+.ios-top-edge-band {
+  display: none;
+}
+
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) {
+    .ios-top-edge-band {
+      display: block;
+      position: fixed;
+      inset: 0 0 auto;
+      height: 12px;
+      background-color: var(--sn-stylekit-background-color);
+      background-clip: text;
+      -webkit-background-clip: text;
+      pointer-events: none;
+      z-index: 2147483647;
+    }
+  }
+}
