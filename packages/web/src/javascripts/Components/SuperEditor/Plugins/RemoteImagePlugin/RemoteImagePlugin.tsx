@@ -1,5 +1,11 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { $createParagraphNode, $insertNodes, $isRootOrShadowRoot, COMMAND_PRIORITY_NORMAL } from 'lexical'
+import {
+  $createParagraphNode,
+  $insertNodes,
+  $isParagraphNode,
+  $isRootOrShadowRoot,
+  COMMAND_PRIORITY_NORMAL,
+} from 'lexical'
 import { useCallback, useEffect, useState } from 'react'
 import { INSERT_REMOTE_IMAGE_COMMAND } from '../Commands'
 import { $createRemoteImageNode, RemoteImageNode } from './RemoteImageNode'
@@ -72,7 +78,9 @@ export default function RemoteImagePlugin() {
         if (!parent) {
           return
         }
-        if (parent.getChildrenSize() === 1) {
+        // Only the paragraph it was wrapped in: unwrapping a table cell, collapsible content or the
+        // root (where insertBefore throws) would break the document.
+        if ($isParagraphNode(parent) && parent.getChildrenSize() === 1) {
           parent.insertBefore(node)
           parent.remove()
         }
