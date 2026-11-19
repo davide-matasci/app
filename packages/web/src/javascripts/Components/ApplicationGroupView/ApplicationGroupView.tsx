@@ -83,9 +83,16 @@ class ApplicationGroupView extends Component<Props, State> {
       document.body.classList.add('chromium')
     }
     document.addEventListener('keydown', preventSelectAllOutsideEditableFields)
+    if (isIOSHomeScreenWebApp()) {
+      // Paints the area under the status bar (see _main.scss)
+      document.body.classList.add('ios-home-screen-app')
+    }
     if (isIPadHomeScreenWebApp()) {
-      // iPadOS draws its window controls over the window's top-left corner (see _main.scss)
-      document.body.classList.add('ipad-window-controls')
+      // iPadOS draws its window controls over the top-left corner of windowed (not full-screen) apps
+      const updateWindowControls = () =>
+        document.body.classList.toggle('ipad-window-controls', !isWindowFullScreenWidth())
+      updateWindowControls()
+      window.addEventListener('resize', updateWindowControls)
     }
   }
 
@@ -152,10 +159,30 @@ function isIPadHomeScreenWebApp(): boolean {
   // iPadOS identifies as "Macintosh" (desktop-class browsing); an iPhone's "like Mac OS X" must not match
   const isIPad =
     /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
-  const isStandalone =
+  return isIPad && isHomeScreenWebApp()
+}
+
+function isHomeScreenWebApp(): boolean {
+  return (
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
-  return isIPad && isStandalone
+  )
+}
+
+function isIOSHomeScreenWebApp(): boolean {
+  const isIOSDevice =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+  return isIOSDevice && isHomeScreenWebApp()
+}
+
+/**
+ * Whether the app window spans the whole screen width. iPadOS shows window controls only on windowed apps.
+ * Safari reports the screen size in portrait, so the width is compared with both screen dimensions.
+ */
+function isWindowFullScreenWidth(): boolean {
+  const tolerance = 2
+  return [screen.width, screen.height].some((size) => Math.abs(window.innerWidth - size) <= tolerance)
 }
 
 /**
