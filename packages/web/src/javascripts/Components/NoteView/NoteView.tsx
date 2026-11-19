@@ -872,7 +872,7 @@ class NoteView extends AbstractComponent<NoteViewProps, State> {
           >
             <div
               className={classNames(
-                'mb-2 flex justify-between md:mb-0 md:flex-nowrap md:gap-4 xl:items-center',
+                'window-controls-clear mb-2 flex justify-between md:mb-0 md:flex-nowrap md:gap-4 xl:items-center',
                 shouldShowConflictsButton ? 'items-center' : 'items-start',
                 !renderHeaderOptions ? 'flex-nowrap gap-4' : 'flex-wrap gap-2 ',
               )}

@@ -192,3 +192,22 @@ label,
 a {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
+
+/**
+ * iPad Home Screen web app: iPadOS draws its window controls (the three dots) over the window's
+ * top-left corner. The top row of whatever sits at the window's left edge moves right to clear
+ * them: the first pane, every pane on small screens (one at a time, full width), and full-screen
+ * dialogs (small screens only; larger ones are centered).
+ */
+body.ipad-window-controls {
+  .app-pane-1 .window-controls-clear {
+    margin-left: 3rem;
+  }
+
+  @media (max-width: 767px) {
+    .app-pane .window-controls-clear,
+    .window-controls-clear-fullscreen {
+      margin-left: 3rem;
+    }
+  }
+}

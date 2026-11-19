@@ -236,7 +236,7 @@ const ContentListHeader = ({
   }, [OptionsMenu, AddButton, FolderName])
 
   return (
-    <div className="section-title-bar-header items-start gap-1">
+    <div className="window-controls-clear section-title-bar-header items-start gap-1">
       {!isTablet && PhoneAndDesktopLayout}
       {isTablet && TabletLayout}
     </div>

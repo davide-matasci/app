@@ -82,6 +82,10 @@ class ApplicationGroupView extends Component<Props, State> {
     if (IS_CHROME) {
       document.body.classList.add('chromium')
     }
+    if (isIPadHomeScreenWebApp()) {
+      // iPadOS draws its window controls over the window's top-left corner (see _main.scss)
+      document.body.classList.add('ipad-window-controls')
+    }
   }
 
   deinit() {
@@ -142,3 +146,12 @@ class ApplicationGroupView extends Component<Props, State> {
 }
 
 export default ApplicationGroupView
+
+function isIPadHomeScreenWebApp(): boolean {
+  const isIPad =
+    /iPad/.test(navigator.userAgent) || (navigator.userAgent.includes('Mac') && navigator.maxTouchPoints > 1)
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  return isIPad && isStandalone
+}
