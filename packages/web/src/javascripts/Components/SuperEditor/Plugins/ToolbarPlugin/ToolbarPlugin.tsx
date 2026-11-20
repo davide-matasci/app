@@ -648,7 +648,7 @@ const ToolbarPlugin = () => {
       {modal}
       <div
         className={classNames(
-          'bg-contrast',
+          'select-none bg-contrast [&_input]:select-text',
           !isEditable ? 'hidden opacity-0' : '',
           !isMobile && 'border-b border-border bg-default',
           !isMobile

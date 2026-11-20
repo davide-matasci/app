@@ -868,7 +868,7 @@ class NoteView extends AbstractComponent<NoteViewProps, State> {
         {this.note && (
           <div
             id="editor-title-bar"
-            className="content-title-bar section-title-bar z-editor-title-bar w-full bg-default pt-4"
+            className="content-title-bar section-title-bar z-editor-title-bar w-full select-none bg-default pt-4 [&_input]:select-text [&_textarea]:select-text"
           >
             <div
               className={classNames(
