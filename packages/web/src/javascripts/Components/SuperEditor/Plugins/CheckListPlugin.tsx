@@ -1,7 +1,7 @@
 import { $insertList, $isListItemNode, INSERT_CHECK_LIST_COMMAND, ListNode } from '@lexical/list'
 import { c } from 'ttag'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { calculateZoomLevel, isHTMLElement, mergeRegister } from '@lexical/utils'
+import { $findMatchingParent, calculateZoomLevel, isHTMLElement, mergeRegister } from '@lexical/utils'
 import {
   $getNearestNodeFromDOMNode,
   $getSelection,
@@ -152,9 +152,7 @@ export function CheckListPlugin(): null {
           if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
             return false
           }
-          const focusNode = selection.focus.getNode()
-          const parent = focusNode.getParent()
-          const node = $isListItemNode(parent) ? parent : focusNode
+          const node = $findMatchingParent(selection.focus.getNode(), $isListItemNode)
           if (!$isListItemNode(node) || node.getParent<ListNode>()?.getListType() !== 'check') {
             return false
           }

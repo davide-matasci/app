@@ -15,14 +15,14 @@ export function handleEditorChange(
   previewLength?: number,
   onChange?: (value: string, previewText: string) => void,
 ) {
-  const childrenNodes = $getRoot().getAllTextNodes().slice(0, 2)
-  let previewText = ''
-  childrenNodes.forEach((node, index) => {
-    previewText += node.getTextContent()
-    if (index !== childrenNodes.length - 1) {
-      previewText += '\n'
-    }
-  })
+  // The first two non-empty blocks (lines), not the first two text nodes: those end at the first formatting
+  // change, so "Call **Bob** about the contract" previewed as "Call Bob"
+  let previewText = $getRoot()
+    .getChildren()
+    .map((block) => block.getTextContent().trim())
+    .filter((text) => text.length > 0)
+    .slice(0, 2)
+    .join('\n')
 
   if (previewLength) {
     previewText = truncateString(previewText, previewLength)

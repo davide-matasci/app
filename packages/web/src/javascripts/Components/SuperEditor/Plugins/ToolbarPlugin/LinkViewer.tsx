@@ -12,6 +12,7 @@ import { getDOMRangeRect } from '../../Lexical/Utils/getDOMRangeRect'
 import { ElementIds } from '@/Constants/ElementIDs'
 import { createPortal } from 'react-dom'
 import { c } from 'ttag'
+import { sanitizeUrl } from '../../Lexical/Utils/sanitizeUrl'
 
 type Props = {
   linkNode: LinkNode
@@ -129,7 +130,7 @@ const LinkViewer = ({ isMobile, editor, linkNode, setIsEditingLink }: Props) => 
             'mr-1 flex flex-grow items-center gap-2 overflow-hidden whitespace-nowrap underline',
             isAutoLink && 'py-2.5',
           )}
-          href={linkUrl}
+          href={sanitizeUrl(linkUrl)}
           target="_blank"
           rel="noopener noreferrer"
         >

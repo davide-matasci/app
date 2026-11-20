@@ -5,6 +5,8 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 
 export type GetMarkdownPluginInterface = {
   getMarkdown: () => string
+  /** The editor's current content as Super JSON, including typing not yet saved */
+  getJson: () => string
 }
 
 const GetMarkdownPlugin = forwardRef<GetMarkdownPluginInterface>((_, ref) => {
@@ -13,6 +15,9 @@ const GetMarkdownPlugin = forwardRef<GetMarkdownPluginInterface>((_, ref) => {
   useImperativeHandle(ref, () => ({
     getMarkdown() {
       return getMarkdown()
+    },
+    getJson() {
+      return JSON.stringify(editor.getEditorState().toJSON())
     },
   }))
 
