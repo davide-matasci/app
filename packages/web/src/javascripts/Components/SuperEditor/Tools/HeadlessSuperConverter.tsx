@@ -53,8 +53,8 @@ export class HeadlessSuperConverter implements SuperConverterServiceInterface {
 
   isValidSuperString(superString: string): boolean {
     try {
-      this.importEditor.parseEditorState(superString)
-      return true
+      // Any JSON object parses without error (e.g. {"key":"value"}); a Super note has at least its root's content
+      return !this.importEditor.parseEditorState(superString).isEmpty()
     } catch {
       return false
     }

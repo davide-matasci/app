@@ -181,4 +181,73 @@ describe('HeadlessSuperConverter', () => {
     const exported = await converter.convertSuperStringToOtherFormat(superString, 'md')
     expect(converter.convertOtherFormatToSuperString(exported, 'md')).toEqual(superString)
   })
+
+  describe('markdown export of formatting', () => {
+    const roundTrip = async (markdown: string) => {
+      const converter = new HeadlessSuperConverter()
+      return converter.convertSuperStringToOtherFormat(converter.convertOtherFormatToSuperString(markdown, 'md'), 'md')
+    }
+
+    it('closes bold around a link in a fully bold line, and keeps it bold on re-import', async () => {
+      const text = (t: string) => ({
+        detail: 0,
+        format: 1,
+        mode: 'normal',
+        style: '',
+        text: t,
+        type: 'text',
+        version: 1,
+      })
+      const superString = JSON.stringify({
+        root: {
+          children: [
+            {
+              children: [
+                text('pre '),
+                {
+                  children: [text('link')],
+                  direction: 'ltr',
+                  format: '',
+                  indent: 0,
+                  type: 'link',
+                  version: 1,
+                  rel: null,
+                  target: null,
+                  title: null,
+                  url: 'https://x.com',
+                },
+                text(' post'),
+              ],
+              direction: 'ltr',
+              format: '',
+              indent: 0,
+              type: 'paragraph',
+              version: 1,
+            },
+          ],
+          direction: 'ltr',
+          format: '',
+          indent: 0,
+          type: 'root',
+          version: 1,
+        },
+      })
+      const converter = new HeadlessSuperConverter()
+
+      const markdown = await converter.convertSuperStringToOtherFormat(superString, 'md')
+      expect(markdown).toBe('**pre** [**link**](https://x.com) **post**')
+      expect(converter.convertOtherFormatToSuperString(markdown, 'md')).not.toContain('"text":"**')
+    })
+
+    it('puts code backticks inside bold', async () => {
+      expect(await roundTrip('a **`x`** b')).toBe('a **`x`** b')
+    })
+  })
+
+  it('treats only real Super content as a valid Super string', () => {
+    const converter = new HeadlessSuperConverter()
+    expect(converter.isValidSuperString('{"key":"value"}')).toBe(false)
+    expect(converter.isValidSuperString('[]')).toBe(false)
+    expect(converter.isValidSuperString(converter.convertOtherFormatToSuperString('hello', 'md'))).toBe(true)
+  })
 })

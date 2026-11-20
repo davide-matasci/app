@@ -41,7 +41,12 @@ function createMarkdownExport(transformers: Array<Transformer>): (node?: Element
 
   // Export only uses text formats that are responsible for single format
   // e.g. it will filter out *** (bold, italic) and instead use separate ** and *
-  const textFormatTransformers = byType.textFormat.filter((transformer) => transformer.format.length === 1)
+  const singleFormatTransformers = byType.textFormat.filter((transformer) => transformer.format.length === 1)
+  // Code last, so its backticks are innermost: bold code exports as **`x`**, not `**x**` (which is code with asterisks)
+  const textFormatTransformers = [
+    ...singleFormatTransformers.filter((transformer) => !transformer.format.includes('code')),
+    ...singleFormatTransformers.filter((transformer) => transformer.format.includes('code')),
+  ]
 
   return (node) => {
     const output = []
@@ -172,6 +177,10 @@ function exportTextFormat(
   // We instead want to trim the whitespace out, apply formatting, and then
   // bring the whitespace back. So our returned string looks like this: "   **foo**   "
   const frozenString = textContent.trim()
+  if (frozenString === '') {
+    // Only whitespace: no tags around it (that would give "a**** b"), just close what the previous text left open
+    return closeUnclosedTags(getTextSibling(node, false), unclosedTags) + textContent
+  }
   let output = frozenString
   // the opening tags to be added to the result
   let openingTags = ''
@@ -201,9 +210,17 @@ function exportTextFormat(
     }
   }
 
-  // close any tags in the same order they were applied, if necessary
+  closingTags = closeUnclosedTags(nextNode, unclosedTags)
+
+  output = openingTags + output + closingTags
+  // Replace trimmed version of textContent ensuring surrounding whitespace is not modified
+  return textContent.replace(frozenString, () => output)
+}
+
+// close any tags in the same order they were applied, unless the next text node continues them
+function closeUnclosedTags(nextNode: TextNode | null, unclosedTags: Array<{ format: TextFormatType; tag: string }>) {
+  let closingTags = ''
   for (let i = 0; i < unclosedTags.length; i++) {
-    // prevent adding closing tag if next sibling will do it
     if (hasFormat(nextNode, unclosedTags[i].format)) {
       continue
     }
@@ -216,50 +233,17 @@ function exportTextFormat(
     }
     break
   }
-
-  output = openingTags + output + closingTags
-  // Replace trimmed version of textContent ensuring surrounding whitespace is not modified
-  return textContent.replace(frozenString, () => output)
+  return closingTags
 }
 
-// Get next or previous text sibling a text node, including cases
-// when it's a child of inline element (e.g. link)
+/**
+ * The next or previous text sibling, within the same parent. Formatting doesn't continue into or out of an inline
+ * element such as a link: a link's text is exported on its own, so bold text around a link gives
+ * "**pre** [**link**](url) **post**" instead of a tag opened in one place and never closed.
+ */
 function getTextSibling(node: TextNode, backward: boolean): TextNode | null {
-  let sibling = backward ? node.getPreviousSibling() : node.getNextSibling()
-
-  if (!sibling) {
-    const parent = node.getParentOrThrow()
-
-    if (parent.isInline()) {
-      sibling = backward ? parent.getPreviousSibling() : parent.getNextSibling()
-    }
-  }
-
-  while (sibling) {
-    if ($isElementNode(sibling)) {
-      if (!sibling.isInline()) {
-        break
-      }
-
-      const descendant = backward ? sibling.getLastDescendant() : sibling.getFirstDescendant()
-
-      if ($isTextNode(descendant)) {
-        return descendant
-      } else {
-        sibling = backward ? sibling.getPreviousSibling() : sibling.getNextSibling()
-      }
-    }
-
-    if ($isTextNode(sibling)) {
-      return sibling
-    }
-
-    if (!$isElementNode(sibling)) {
-      return null
-    }
-  }
-
-  return null
+  const sibling = backward ? node.getPreviousSibling() : node.getNextSibling()
+  return $isTextNode(sibling) ? sibling : null
 }
 
 function hasFormat(node: LexicalNode | null | undefined, format: TextFormatType): boolean {

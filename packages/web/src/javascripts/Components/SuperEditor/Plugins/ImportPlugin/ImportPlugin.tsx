@@ -1,6 +1,14 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useEffect } from 'react'
-import { $createParagraphNode, $createRangeSelection, LexicalEditor } from 'lexical'
+import {
+  $createLineBreakNode,
+  $createParagraphNode,
+  $createRangeSelection,
+  $createTextNode,
+  $getRoot,
+  LexicalEditor,
+} from 'lexical'
+import { $createCodeNode } from '@lexical/code'
 import { handleEditorChange } from '../../Utils'
 import { SuperNotePreviewCharLimit } from '../../SuperEditor'
 import { $generateNodesFromDOM } from '@lexical/html'
@@ -15,7 +23,7 @@ export default function ImportPlugin({
   customImportFunction,
 }: {
   text: string
-  format: 'md' | 'html'
+  format: 'md' | 'html' | 'code'
   onChange: (value: string, preview: string) => void
   customImportFunction?: (editor: LexicalEditor, text: string) => void
 }): JSX.Element | null {
@@ -33,7 +41,18 @@ export default function ImportPlugin({
     }
 
     editor.update(() => {
-      if (format === 'md') {
+      if (format === 'code') {
+        const codeNode = $createCodeNode()
+        text.split('\n').forEach((line, index) => {
+          if (index > 0) {
+            codeNode.append($createLineBreakNode())
+          }
+          if (line) {
+            codeNode.append($createTextNode(line))
+          }
+        })
+        $getRoot().clear().append(codeNode)
+      } else if (format === 'md') {
         $convertFromMarkdownString(text, MarkdownTransformers, undefined, true)
       } else {
         const parser = new DOMParser()
