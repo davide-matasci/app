@@ -24,9 +24,7 @@ import {
   $deleteTableRowAtSelection,
   $getNodeTriplet,
   $getTableCellNodeFromLexicalNode,
-  $getTableColumnIndexFromTableCellNode,
   $getTableNodeFromLexicalNodeOrThrow,
-  $getTableRowIndexFromTableCellNode,
   $insertTableColumnAtSelection,
   $insertTableRowAtSelection,
   $isTableCellNode,
@@ -38,6 +36,7 @@ import {
   TableCellHeaderStates,
   TableCellNode,
   TableSelection,
+  $computeTableMap,
 } from '@lexical/table'
 import { ReactPortal, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -295,36 +294,28 @@ function TableActionMenu({ onClose, tableCellNode: _tableCellNode, cellMerge }: 
     })
   }, [editor, onClose])
 
-  const toggleTableRowIsHeader = useCallback(
-    (headerState?: number) => {
+  /**
+   * Header toggles work on the grid (via the table map), not on each row's children: with merged cells a cell's
+   * position among its row's children isn't its column, which picked wrong cells or threw. Each toggle only changes
+   * its own header kind (mask), so a column header no longer removes a row header in the same cell, and vice versa.
+   */
+  const toggleHeaderCells = useCallback(
+    (kind: 'row' | 'column', headerState?: number) => {
       editor.update(() => {
         const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode)
+        const [map, cellMap] = $computeTableMap(tableNode, tableCellNode, tableCellNode)
+        const mask = kind === 'row' ? TableCellHeaderStates.ROW : TableCellHeaderStates.COLUMN
+        const cells =
+          kind === 'row'
+            ? map[cellMap.startRow].map((entry) => entry.cell)
+            : map.map((row) => row[cellMap.startColumn].cell)
 
-        const tableRowIndex = $getTableRowIndexFromTableCellNode(tableCellNode)
-
-        const tableRows = tableNode.getChildren()
-
-        if (tableRowIndex >= tableRows.length || tableRowIndex < 0) {
-          throw new Error('Expected table cell to be inside of table row.')
-        }
-
-        const tableRow = tableRows[tableRowIndex]
-
-        if (!$isTableRowNode(tableRow)) {
-          throw new Error('Expected table row')
-        }
-
-        tableRow.getChildren().forEach((tableCell) => {
-          if (!$isTableCellNode(tableCell)) {
-            throw new Error('Expected table cell')
-          }
-
+        new Set(cells).forEach((tableCell) => {
           if (headerState === undefined) {
-            tableCell.toggleHeaderStyle(TableCellHeaderStates.ROW)
-            return
+            tableCell.toggleHeaderStyle(mask)
+          } else {
+            tableCell.setHeaderStyles(headerState, mask)
           }
-
-          tableCell.setHeaderStyles(headerState)
         })
 
         clearTableSelection()
@@ -334,47 +325,14 @@ function TableActionMenu({ onClose, tableCellNode: _tableCellNode, cellMerge }: 
     [editor, tableCellNode, clearTableSelection, onClose],
   )
 
+  const toggleTableRowIsHeader = useCallback(
+    (headerState?: number) => toggleHeaderCells('row', headerState),
+    [toggleHeaderCells],
+  )
+
   const toggleTableColumnIsHeader = useCallback(
-    (headerState?: number) => {
-      editor.update(() => {
-        const tableNode = $getTableNodeFromLexicalNodeOrThrow(tableCellNode)
-
-        const tableColumnIndex = $getTableColumnIndexFromTableCellNode(tableCellNode)
-
-        const tableRows = tableNode.getChildren()
-
-        for (let r = 0; r < tableRows.length; r++) {
-          const tableRow = tableRows[r]
-
-          if (!$isTableRowNode(tableRow)) {
-            throw new Error('Expected table row')
-          }
-
-          const tableCells = tableRow.getChildren()
-
-          if (tableColumnIndex >= tableCells.length || tableColumnIndex < 0) {
-            throw new Error('Expected table cell to be inside of table row.')
-          }
-
-          const tableCell = tableCells[tableColumnIndex]
-
-          if (!$isTableCellNode(tableCell)) {
-            throw new Error('Expected table cell')
-          }
-
-          if (headerState === undefined) {
-            tableCell.toggleHeaderStyle(TableCellHeaderStates.COLUMN)
-            continue
-          }
-
-          tableCell.setHeaderStyles(headerState)
-        }
-
-        clearTableSelection()
-        onClose()
-      })
-    },
-    [editor, tableCellNode, clearTableSelection, onClose],
+    (headerState?: number) => toggleHeaderCells('column', headerState),
+    [toggleHeaderCells],
   )
 
   let mergeCellButton: null | JSX.Element = null

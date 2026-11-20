@@ -30,6 +30,7 @@ import AutoLinkPlugin from './Plugins/AutoLinkPlugin/AutoLinkPlugin'
 import DatetimePlugin from './Plugins/DateTimePlugin/DateTimePlugin'
 import PasswordPlugin from './Plugins/PasswordPlugin/PasswordPlugin'
 import { CheckListPlugin } from './Plugins/CheckListPlugin'
+import ListMaxIndentLevelPlugin from './Plugins/ListMaxIndentLevelPlugin'
 import GoogleDocsPastePlugin from './Plugins/GoogleDocsPastePlugin/GoogleDocsPastePlugin'
 import { c } from 'ttag'
 
@@ -117,6 +118,7 @@ export const BlocksEditor: FunctionComponent<BlocksEditorProps> = ({
         />
       </div>
       <ListPlugin />
+      <ListMaxIndentLevelPlugin maxDepth={7} />
       <MarkdownShortcutPlugin transformers={MarkdownTransformers} />
       <TablePlugin hasCellMerge />
       <OnChangePlugin onChange={handleChange} ignoreSelectionChange={true} />

@@ -11,10 +11,12 @@ import { c } from 'ttag'
 
 type Props = {
   note: SNNote
+  /** The content to show, which can be newer than the saved note */
+  text: string
   closeDialog: () => void
 }
 
-export const SuperNoteMarkdownPreview: FunctionComponent<Props> = ({ note, closeDialog }) => {
+export const SuperNoteMarkdownPreview: FunctionComponent<Props> = ({ note, text, closeDialog }) => {
   const [markdown, setMarkdown] = useState('')
   const [didCopy, setDidCopy] = useState(false)
 
@@ -55,7 +57,7 @@ export const SuperNoteMarkdownPreview: FunctionComponent<Props> = ({ note, close
     <Modal title={c('B4.Notes.EditingUI.Label').t`Markdown Preview`} close={closeDialog} actions={modalActions}>
       <div className="relative w-full px-4 py-4">
         <ErrorBoundary>
-          <BlocksEditorComposer readonly initialValue={note.text}>
+          <BlocksEditorComposer readonly initialValue={text}>
             <BlocksEditor
               readonly
               className="relative resize-none text-base focus:shadow-none focus:outline-none"

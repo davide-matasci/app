@@ -143,8 +143,14 @@ export default function FilePlugin({ currentNote }: { currentNote: SNNote }): JS
       editor.registerCommand(
         PASTE_COMMAND,
         (payload) => {
-          const files = payload instanceof ClipboardEvent ? payload.clipboardData?.files : null
-          if (files?.length) {
+          const clipboardData = payload instanceof ClipboardEvent ? payload.clipboardData : null
+          const files = clipboardData?.files
+          // Copying from a web page or an office app often puts an image of the selection next to its
+          // formatted text: paste the text then. (Plain text alone is not checked: copying a file in
+          // Finder also puts its name there.)
+          const html = clipboardData?.getData('text/html') ?? ''
+          const hasFormattedText = html.length > 0 && !/^\s*(<meta[^>]*>\s*)?<img[^>]*>\s*$/i.test(html)
+          if (files?.length && !hasFormattedText) {
             uploadFilesList(files)
             return true
           }

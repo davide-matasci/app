@@ -206,7 +206,9 @@ export const SuperEditor: FunctionComponent<Props> = ({
         throw Error('Editor received changes for non-current note')
       }
 
-      if (isPayloadSourceRetrieved(source)) {
+      // A sync can bring back the note unchanged (e.g. our own save): replacing the editor's
+      // content then would only move the caret and drop the undo history.
+      if (isPayloadSourceRetrieved(source) && updatedNote.text !== note.current.text) {
         ignoreNextChange.current = true
         changeEditorFunction.current?.(updatedNote.text)
       }
@@ -305,7 +307,11 @@ export const SuperEditor: FunctionComponent<Props> = ({
           </FilesControllerProvider>
         </LinkingControllerProvider>
         <ModalOverlay isOpen={showMarkdownPreview} close={closeMarkdownPreview}>
-          <SuperNoteMarkdownPreview note={note.current} closeDialog={closeMarkdownPreview} />
+          <SuperNoteMarkdownPreview
+            note={note.current}
+            text={getMarkdownPlugin.current?.getJson() ?? note.current.text}
+            closeDialog={closeMarkdownPreview}
+          />
         </ModalOverlay>
       </ErrorBoundary>
     </div>
