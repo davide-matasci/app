@@ -10,7 +10,7 @@ import {
 } from 'lexical'
 import { useApplication } from '@/Components/ApplicationProvider'
 import FilePreview from '@/Components/FilePreview/FilePreview'
-import { FileItem } from '@standardnotes/snjs'
+import { ApplicationEvent, ContentType, FileItem } from '@standardnotes/snjs'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
 import { observer } from 'mobx-react-lite'
@@ -47,6 +47,24 @@ function FileComponent({
   const application = useApplication()
   const [editor] = useLexicalComposerContext()
   const [file, setFile] = useState(() => application.items.findItem<FileItem>(fileUuid))
+  /** Looked up live: the file can arrive after the note opens (batched local load, sync); see BubbleComponent. */
+  useEffect(() => {
+    setFile(application.items.findItem<FileItem>(fileUuid))
+    return application.items.streamItems(ContentType.TYPES.File, () =>
+      setFile(application.items.findItem<FileItem>(fileUuid)),
+    )
+  }, [application, fileUuid])
+  const [isDatabaseLoaded, setIsDatabaseLoaded] = useState(() => application.sync.isDatabaseLoaded())
+  useEffect(() => {
+    if (isDatabaseLoaded) {
+      return
+    }
+    return application.addEventObserver(async (event) => {
+      if (event === ApplicationEvent.LocalDataLoaded) {
+        setIsDatabaseLoaded(true)
+      }
+    })
+  }, [application, isDatabaseLoaded])
   const uploadProgress = application.filesController.uploadProgressMap.get(fileUuid)
 
   const [canLoad, setCanLoad] = useState(false)
@@ -163,6 +181,14 @@ function FileComponent({
             />
           </div>
         </div>
+      </BlockWithAlignableContents>
+    )
+  }
+
+  if (!file && !isDatabaseLoaded) {
+    return (
+      <BlockWithAlignableContents className={className} format={format} nodeKey={nodeKey}>
+        <div className="text-passive-1">{c('B4.Notes.EditingUI.Info').t`Loading…`}</div>
       </BlockWithAlignableContents>
     )
   }

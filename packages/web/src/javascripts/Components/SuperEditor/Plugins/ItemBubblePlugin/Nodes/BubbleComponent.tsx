@@ -1,4 +1,5 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { ApplicationEvent, ContentType } from '@standardnotes/snjs'
 import { useApplication } from '@/Components/ApplicationProvider'
 import LinkedItemBubble from '@/Components/LinkedItems/LinkedItemBubble'
 import { createLinkFromItem } from '@/Utils/Items/Search/createLinkFromItem'
@@ -19,7 +20,28 @@ export function BubbleComponent({ itemUuid, node }: BubbleComponentProps) {
   const application = useApplication()
   const [editor] = useLexicalComposerContext()
   const linkingController = useLinkingController()
-  const item = useMemo(() => application.items.findItem(itemUuid), [application, itemUuid])
+  /**
+   * Looked up live, not once: the linked item can arrive after the note opens (the local database loads in batches,
+   * new items come in by sync), and was then shown as deleted until the next reload.
+   */
+  const [item, setItem] = useState(() => application.items.findItem(itemUuid))
+  useEffect(() => {
+    setItem(application.items.findItem(itemUuid))
+    return application.items.streamItems([ContentType.TYPES.Note, ContentType.TYPES.File, ContentType.TYPES.Tag], () =>
+      setItem(application.items.findItem(itemUuid)),
+    )
+  }, [application, itemUuid])
+  const [isDatabaseLoaded, setIsDatabaseLoaded] = useState(() => application.sync.isDatabaseLoaded())
+  useEffect(() => {
+    if (isDatabaseLoaded) {
+      return
+    }
+    return application.addEventObserver(async (event) => {
+      if (event === ApplicationEvent.LocalDataLoaded) {
+        setIsDatabaseLoaded(true)
+      }
+    })
+  }, [application, isDatabaseLoaded])
   const { toggleAppPane } = useResponsiveAppPane()
 
   const activateItemAndTogglePane = useCallback(
@@ -37,6 +59,14 @@ export function BubbleComponent({ itemUuid, node }: BubbleComponentProps) {
       node.remove()
     })
   }, [linkingController, node, editor])
+
+  if (!item && !isDatabaseLoaded) {
+    return (
+      <span className="mx-0.5 inline-flex h-6 items-center rounded bg-passive-4-opacity-variant px-2 align-middle text-sm text-passive-1 lg:text-xs">
+        {c('B4.Notes.EditingUI.Info').t`Loading…`}
+      </span>
+    )
+  }
 
   if (!item) {
     /** The item was deleted for good: an inline, removable placeholder, not a block with a raw uuid. */
