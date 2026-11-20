@@ -6,6 +6,7 @@ import useModal from '../../Lexical/Hooks/useModal'
 import { InsertTableDialog } from '../TablePlugin'
 import { getSelectedNode } from '../../Lexical/Utils/getSelectedNode'
 import {
+  $createTextNode,
   $getSelection,
   $isRangeSelection,
   CAN_REDO_COMMAND,
@@ -33,7 +34,7 @@ import {
   $getNearestNodeOfType,
   $getNearestBlockElementAncestorOrThrow,
 } from '@lexical/utils'
-import { $isLinkNode, TOGGLE_LINK_COMMAND, LinkNode } from '@lexical/link'
+import { $createLinkNode, $isLinkNode, TOGGLE_LINK_COMMAND, LinkNode } from '@lexical/link'
 import { $isListNode, ListNode } from '@lexical/list'
 import { $isHeadingNode, $isQuoteNode } from '@lexical/rich-text'
 import {
@@ -526,6 +527,32 @@ const ToolbarPlugin = () => {
       ),
     )
   }, [$updateToolbar, activeEditor])
+
+  /**
+   * Adding a link with nothing selected (Cmd+K with a URL copied, or the Link button) inserts the URL as a new link
+   * at the cursor. Lexical's own handling treats a collapsed cursor as the whole text node and turned the entire
+   * sentence into the link.
+   */
+  useEffect(() => {
+    return activeEditor.registerCommand(
+      TOGGLE_LINK_COMMAND,
+      (payload) => {
+        const url = typeof payload === 'string' ? payload : payload?.url
+        const selection = $getSelection()
+        if (!url || !$isRangeSelection(selection) || !selection.isCollapsed()) {
+          return false
+        }
+        if ($findMatchingParent(selection.anchor.getNode(), $isLinkNode)) {
+          return false
+        }
+        const linkNode = $createLinkNode(url)
+        linkNode.append($createTextNode(url))
+        selection.insertNodes([linkNode])
+        return true
+      },
+      COMMAND_PRIORITY_NORMAL,
+    )
+  }, [activeEditor])
 
   useEffect(() => {
     return activeEditor.registerCommand(

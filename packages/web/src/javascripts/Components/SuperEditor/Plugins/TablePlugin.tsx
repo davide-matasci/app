@@ -6,7 +6,14 @@
  *
  */
 
-import { INSERT_TABLE_COMMAND, TableNode, TableRowNode } from '@lexical/table'
+import {
+  $isTableCellNode,
+  $isTableNode,
+  $isTableRowNode,
+  INSERT_TABLE_COMMAND,
+  TableNode,
+  TableRowNode,
+} from '@lexical/table'
 import { $createParagraphNode, LexicalEditor } from 'lexical'
 import { useCallback, useEffect, useState } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -66,30 +73,52 @@ export function InsertTableDialog({
 export function RemoveBrokenTablesPlugin() {
   const [editor] = useLexicalComposerContext()
 
-  useEffect(() => {
-    return mergeRegister(
-      editor.registerNodeTransform(TableRowNode, (node) => {
-        if (!node.getFirstChild()) {
-          node.remove()
-        }
-      }),
-      editor.registerNodeTransform(TableNode, (node) => {
-        if (!node.getFirstChild()) {
-          node.remove()
-        }
-        const hasNextSibling = !!node.getNextSibling()
-        const hasPreviousSibling = !!node.getPreviousSibling()
-        if (!node.getParent()) {
-          return
-        }
-        if (!hasNextSibling) {
-          node.insertAfter($createParagraphNode())
-        } else if (!hasPreviousSibling) {
-          node.insertBefore($createParagraphNode())
-        }
-      }),
-    )
-  }, [editor])
+  useEffect(() => registerRemoveBrokenTables(editor), [editor])
 
   return null
+}
+
+export function registerRemoveBrokenTables(editor: LexicalEditor) {
+  return mergeRegister(
+    editor.registerNodeTransform(TableRowNode, (node) => {
+      if (!node.getFirstChild() && !isCoveredByRowSpan(node)) {
+        node.remove()
+      }
+    }),
+    editor.registerNodeTransform(TableNode, (node) => {
+      if (!node.getFirstChild()) {
+        node.remove()
+      }
+      const hasNextSibling = !!node.getNextSibling()
+      const hasPreviousSibling = !!node.getPreviousSibling()
+      if (!node.getParent()) {
+        return
+      }
+      if (!hasNextSibling) {
+        node.insertAfter($createParagraphNode())
+      } else if (!hasPreviousSibling) {
+        node.insertBefore($createParagraphNode())
+      }
+    }),
+  )
+}
+
+/**
+ * A row left without cells by a merge is still part of the table: the merged cell above spans into it. Removing it
+ * made the table pad itself with extra cells (merging two full rows of a 3x3 table gave a 6-column table).
+ */
+function isCoveredByRowSpan(row: TableRowNode): boolean {
+  const table = row.getParent()
+  if (!$isTableNode(table)) {
+    return false
+  }
+  const rows = table.getChildren()
+  const rowIndex = rows.indexOf(row)
+  return rows
+    .slice(0, rowIndex)
+    .some(
+      (earlierRow, earlierIndex) =>
+        $isTableRowNode(earlierRow) &&
+        earlierRow.getChildren().some((cell) => $isTableCellNode(cell) && earlierIndex + cell.getRowSpan() > rowIndex),
+    )
 }

@@ -54,7 +54,8 @@ const SuperNoteConverter = ({
     return 'json'
   }, [uiFeature])
 
-  const [convertedContent, setConvertedContent] = useState<string>('')
+  /** undefined until the conversion has finished: Convert stays disabled meanwhile. */
+  const [convertedContent, setConvertedContent] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     const convertContent = async () => {
@@ -63,7 +64,9 @@ const SuperNoteConverter = ({
       }
 
       try {
-        return new HeadlessSuperConverter().convertSuperStringToOtherFormat(note.text, format)
+        // Awaited: a rejected conversion must reach the catch and fall back to the note's text, not leave the
+        // content empty (Convert would then save an empty note)
+        return await new HeadlessSuperConverter().convertSuperStringToOtherFormat(note.text, format)
       } catch (error) {
         console.error(error)
       }
@@ -80,7 +83,7 @@ const SuperNoteConverter = ({
 
     const templateNoteForRevision = application.items.createTemplateItem<NoteContent, SNNote>(ContentType.TYPES.Note, {
       title: note.title,
-      text: convertedContent,
+      text: convertedContent ?? '',
       references: note.references,
     })
 
@@ -123,6 +126,9 @@ const SuperNoteConverter = ({
   )
 
   const confirmConvert = useCallback(async () => {
+    if (convertedContent === undefined) {
+      return
+    }
     await performConvert(convertedContent)
     onComplete()
     closeDialog()
@@ -171,6 +177,7 @@ const SuperNoteConverter = ({
         onClick: confirmConvert,
         mobileSlot: 'right',
         type: 'primary',
+        disabled: convertedContent === undefined,
       },
       {
         label: c('B4.Notes.EditingUI.Action').t`Convert As-Is`,
@@ -178,7 +185,7 @@ const SuperNoteConverter = ({
         type: 'secondary',
       },
     ],
-    [closeDialog, confirmConvert, convertAsIs],
+    [closeDialog, confirmConvert, convertAsIs, convertedContent],
   )
 
   return (
@@ -211,7 +218,7 @@ const SuperNoteConverter = ({
           <textarea
             readOnly={true}
             className="font-editor h-full w-full resize-none border-0 bg-default p-4 text-editor text-text"
-            value={convertedContent}
+            value={convertedContent ?? ''}
           />
         </div>
       )}

@@ -12,6 +12,7 @@ import { useLocalPreference } from '@/Hooks/usePreference'
 import { useResponsiveEditorFontSize } from '@/Utils/getPlaintextFontSize'
 import { SuperName, jtString } from '@standardnotes/features'
 import { c } from 'ttag'
+import { HeadlessSuperConverter } from './Tools/HeadlessSuperConverter'
 
 const NotePreviewCharLimit = 160
 
@@ -22,22 +23,17 @@ type Props = {
   onComplete: () => void
 }
 
-function isValidJson(string: string) {
-  try {
-    JSON.parse(string)
-  } catch {
-    return false
-  }
-  return true
-}
-
 export const SuperNoteImporter: FunctionComponent<Props> = ({ note, application, closeDialog, onComplete }) => {
   const isSeamlessConvert = note.text.length === 0
-  const canBeConvertedAsIs = isValidJson(note.text)
+  /** Only a note that holds Super's own format: other JSON would make a Super note that can't be loaded */
+  const canBeConvertedAsIs = useMemo(() => new HeadlessSuperConverter().isValidSuperString(note.text), [note.text])
   const [lastValue, setLastValue] = useState({ text: '', previewPlain: '' })
 
+  // Code is kept as one code block: read as markdown, characters like * _ # turned into formatting and were lost
   const format =
-    !note.noteType || [NoteType.Plain, NoteType.Markdown, NoteType.Code, NoteType.Task].includes(note.noteType)
+    note.noteType === NoteType.Code
+      ? 'code'
+      : !note.noteType || [NoteType.Plain, NoteType.Markdown, NoteType.Task].includes(note.noteType)
       ? 'md'
       : 'html'
 

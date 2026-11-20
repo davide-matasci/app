@@ -69,7 +69,13 @@ export const ItemSelectionPlugin: FunctionComponent<Props> = ({ currentNote }) =
       })
     })
 
-    if (shouldShowCreateTag) {
+    /**
+     * The query may contain spaces (item titles do), so once it does and nothing matches, the menu would otherwise
+     * stay open with only "Create tag": typing "Ping @dave about the report" + Enter turned the text into a new tag.
+     * Creating a tag here needs a query without spaces; with nothing to offer, the menu closes and Enter is a newline.
+     */
+    const queryHasSpace = /\s/.test(queryString || '')
+    if (shouldShowCreateTag && !queryHasSpace) {
       options.push(
         new ItemOption(undefined, '', {
           onSelect: async (queryString: string) => {
