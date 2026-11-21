@@ -91,7 +91,7 @@ const EmailBackups = ({ application }: Props) => {
         {!isDesktopApplication() && (
           <Text className="mb-3">
             {c('B6.Preferences.Backups.Info')
-              .t`Receive daily encrypted email backups of all your notes directly in your email inbox.`}
+              .t`Receive encrypted email backups of all your notes directly in your email inbox.`}
           </Text>
         )}
 
