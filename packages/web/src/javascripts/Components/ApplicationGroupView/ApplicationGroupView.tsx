@@ -161,6 +161,42 @@ function isIPadHomeScreenWebApp(): boolean {
   return isIPad && isHomeScreenWebApp()
 }
 
+/**
+ * Whether a drag by (deltaX, deltaY) can scroll an element under the touch, rather than the page: an
+ * ancestor of the target that scrolls in the drag's direction and isn't already at its end in that direction.
+ */
+function canScrollUnderTouch(target: EventTarget | null, deltaX: number, deltaY: number): boolean {
+  const isVertical = Math.abs(deltaY) >= Math.abs(deltaX)
+  for (let element = target instanceof Element ? target : null; element; element = element.parentElement) {
+    if (element === document.body || element === document.documentElement) {
+      return false
+    }
+    const style = getComputedStyle(element)
+    if (isVertical) {
+      const scrolls = /(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 1
+      if (!scrolls) {
+        continue
+      }
+      const atTop = element.scrollTop <= 0
+      const atBottom = element.scrollTop + element.clientHeight >= element.scrollHeight - 1
+      if ((deltaY > 0 && !atTop) || (deltaY < 0 && !atBottom)) {
+        return true
+      }
+    } else {
+      const scrolls = /(auto|scroll)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1
+      if (!scrolls) {
+        continue
+      }
+      const atStart = element.scrollLeft <= 0
+      const atEnd = element.scrollLeft + element.clientWidth >= element.scrollWidth - 1
+      if ((deltaX > 0 && !atStart) || (deltaX < 0 && !atEnd)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 function isAppleTouchDevice(): boolean {
   return (
     /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -172,27 +208,78 @@ function isAppleTouchDevice(): boolean {
  * When a text field is focused and the keyboard (or the iPad's shortcut bar) appears, iOS scrolls the page,
  * despite overflow: hidden, to keep the caret visible, and often doesn't scroll it back: the top of the
  * interface ends up off screen. Instead, the app is sized to the area the keyboard leaves visible (the
- * editor scrolls itself to keep the caret in view) and the page is kept at the top. Nothing changes while
- * the page is pinch-zoomed.
+ * editor scrolls itself to keep the caret in view), and while the keyboard is open a drag can only scroll
+ * the area under the finger (the note, a list), never the page. As a fallback, the page is put back at the
+ * top when the keyboard opens or closes, or once anything else moved it and it has stopped moving. Nothing
+ * changes while the page is pinch-zoomed.
  */
 function fitPageToVisibleArea() {
   const viewport = window.visualViewport
   if (!viewport) {
     return
   }
-  const update = () => {
-    if (Math.abs(viewport.scale - 1) > 0.01) {
-      return
-    }
-    document.documentElement.style.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
-    if (window.scrollY !== 0 || window.scrollX !== 0) {
+  const isZoomed = () => Math.abs(viewport.scale - 1) > 0.01
+  const scrollToTop = () => {
+    if (!isZoomed() && (window.scrollY !== 0 || window.scrollX !== 0)) {
       window.scrollTo(0, 0)
     }
   }
-  viewport.addEventListener('resize', update)
-  viewport.addEventListener('scroll', update)
-  window.addEventListener('scroll', update)
-  update()
+
+  let isTouching = false
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
+  const scrollToTopWhenSettled = () => {
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => {
+      if (!isTouching) {
+        scrollToTop()
+      }
+    }, 150)
+  }
+
+  const onResize = () => {
+    if (isZoomed()) {
+      return
+    }
+    document.documentElement.style.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
+    scrollToTop()
+  }
+
+  viewport.addEventListener('resize', onResize)
+  viewport.addEventListener('scroll', scrollToTopWhenSettled)
+  window.addEventListener('scroll', scrollToTopWhenSettled, { passive: true })
+  // The keyboard (or the iPad's shortcut bar) takes part of the screen: only then can iOS move the page.
+  const isKeyboardOpen = () => viewport.height < window.innerHeight - 40
+
+  let touchStart = { x: 0, y: 0 }
+  document.addEventListener(
+    'touchstart',
+    (event) => {
+      isTouching = true
+      touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY }
+    },
+    { passive: true },
+  )
+  document.addEventListener(
+    'touchmove',
+    (event) => {
+      if (event.touches.length !== 1 || isZoomed() || !isKeyboardOpen()) {
+        return
+      }
+      const deltaX = event.touches[0].clientX - touchStart.x
+      const deltaY = event.touches[0].clientY - touchStart.y
+      if (!canScrollUnderTouch(event.target, deltaX, deltaY)) {
+        event.preventDefault()
+      }
+    },
+    { passive: false },
+  )
+  const onTouchEnd = () => {
+    isTouching = false
+    scrollToTopWhenSettled()
+  }
+  document.addEventListener('touchend', onTouchEnd, { passive: true })
+  document.addEventListener('touchcancel', onTouchEnd, { passive: true })
+  onResize()
 }
 
 function isHomeScreenWebApp(): boolean {
