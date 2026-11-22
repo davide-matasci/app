@@ -131,7 +131,8 @@ body {
 html,
 body,
 .main-ui-view {
-  height: 100%;
+  // --visible-height: the area the keyboard leaves visible (iOS Home Screen web app, ApplicationGroupView)
+  height: var(--visible-height, 100%);
   min-height: 0;
   max-height: none;
 

@@ -83,6 +83,9 @@ class ApplicationGroupView extends Component<Props, State> {
       document.body.classList.add('chromium')
     }
     document.addEventListener('keydown', preventSelectAllOutsideEditableFields)
+    if (isAppleTouchDevice() && isHomeScreenWebApp()) {
+      fitPageToVisibleArea()
+    }
     if (isIPadHomeScreenWebApp()) {
       // iPadOS draws its window controls over the top-left corner of windowed (not full-screen) apps
       const updateWindowControls = () =>
@@ -156,6 +159,40 @@ function isIPadHomeScreenWebApp(): boolean {
   const isIPad =
     /iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
   return isIPad && isHomeScreenWebApp()
+}
+
+function isAppleTouchDevice(): boolean {
+  return (
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+  )
+}
+
+/**
+ * When a text field is focused and the keyboard (or the iPad's shortcut bar) appears, iOS scrolls the page,
+ * despite overflow: hidden, to keep the caret visible, and often doesn't scroll it back: the top of the
+ * interface ends up off screen. Instead, the app is sized to the area the keyboard leaves visible (the
+ * editor scrolls itself to keep the caret in view) and the page is kept at the top. Nothing changes while
+ * the page is pinch-zoomed.
+ */
+function fitPageToVisibleArea() {
+  const viewport = window.visualViewport
+  if (!viewport) {
+    return
+  }
+  const update = () => {
+    if (Math.abs(viewport.scale - 1) > 0.01) {
+      return
+    }
+    document.documentElement.style.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
+    if (window.scrollY !== 0 || window.scrollX !== 0) {
+      window.scrollTo(0, 0)
+    }
+  }
+  viewport.addEventListener('resize', update)
+  viewport.addEventListener('scroll', update)
+  window.addEventListener('scroll', update)
+  update()
 }
 
 function isHomeScreenWebApp(): boolean {
