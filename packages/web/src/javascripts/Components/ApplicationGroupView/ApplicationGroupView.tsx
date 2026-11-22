@@ -172,27 +172,58 @@ function isAppleTouchDevice(): boolean {
  * When a text field is focused and the keyboard (or the iPad's shortcut bar) appears, iOS scrolls the page,
  * despite overflow: hidden, to keep the caret visible, and often doesn't scroll it back: the top of the
  * interface ends up off screen. Instead, the app is sized to the area the keyboard leaves visible (the
- * editor scrolls itself to keep the caret in view) and the page is kept at the top. Nothing changes while
- * the page is pinch-zoomed.
+ * editor scrolls itself to keep the caret in view) and the page is put back at the top: right away when the
+ * keyboard opens or closes, and otherwise once a drag has ended and the page has stopped moving (moving it
+ * back during the drag made the interface shake). Nothing changes while the page is pinch-zoomed.
  */
 function fitPageToVisibleArea() {
   const viewport = window.visualViewport
   if (!viewport) {
     return
   }
-  const update = () => {
-    if (Math.abs(viewport.scale - 1) > 0.01) {
-      return
-    }
-    document.documentElement.style.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
-    if (window.scrollY !== 0 || window.scrollX !== 0) {
+  const isZoomed = () => Math.abs(viewport.scale - 1) > 0.01
+  const scrollToTop = () => {
+    if (!isZoomed() && (window.scrollY !== 0 || window.scrollX !== 0)) {
       window.scrollTo(0, 0)
     }
   }
-  viewport.addEventListener('resize', update)
-  viewport.addEventListener('scroll', update)
-  window.addEventListener('scroll', update)
-  update()
+
+  let isTouching = false
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
+  const scrollToTopWhenSettled = () => {
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(() => {
+      if (!isTouching) {
+        scrollToTop()
+      }
+    }, 150)
+  }
+
+  const onResize = () => {
+    if (isZoomed()) {
+      return
+    }
+    document.documentElement.style.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
+    scrollToTop()
+  }
+
+  viewport.addEventListener('resize', onResize)
+  viewport.addEventListener('scroll', scrollToTopWhenSettled)
+  window.addEventListener('scroll', scrollToTopWhenSettled, { passive: true })
+  document.addEventListener(
+    'touchstart',
+    () => {
+      isTouching = true
+    },
+    { passive: true },
+  )
+  const onTouchEnd = () => {
+    isTouching = false
+    scrollToTopWhenSettled()
+  }
+  document.addEventListener('touchend', onTouchEnd, { passive: true })
+  document.addEventListener('touchcancel', onTouchEnd, { passive: true })
+  onResize()
 }
 
 function isHomeScreenWebApp(): boolean {
