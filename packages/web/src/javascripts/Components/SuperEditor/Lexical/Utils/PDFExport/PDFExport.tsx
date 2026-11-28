@@ -19,6 +19,8 @@ import { $isTableNode, $isTableRowNode, $isTableCellNode } from '@lexical/table'
 import { $isCodeHighlightNode, $isCodeNode } from '@lexical/code'
 import { $isInlineFileNode } from '../../../Plugins/InlineFilePlugin/InlineFileNode'
 import { $isRemoteImageNode } from '../../../Plugins/RemoteImagePlugin/RemoteImageNode'
+import { $isLocationNode } from '../../../Plugins/LocationPlugin/LocationNode'
+import { mapLinks } from '../../../Plugins/LocationPlugin/Location'
 import { $isBubbleNode } from '../../../Plugins/ItemBubblePlugin/Nodes/BubbleUtils'
 import { $isCollapsibleContainerNode } from '../../../Plugins/CollapsiblePlugin/CollapsibleContainerNode'
 import { $isCollapsibleContentNode } from '../../../Plugins/CollapsiblePlugin/CollapsibleContentNode'
@@ -368,6 +370,20 @@ const getPDFDataNodeFromLexicalNode = (
     return {
       type: 'Text',
       children: node.getTextContent(),
+    }
+  }
+
+  if ($isLocationNode(node)) {
+    return {
+      type: 'View',
+      style: styles.block,
+      children: [
+        {
+          type: 'Link',
+          src: mapLinks(node.getPoint(), node.getName()).openStreetMap,
+          children: node.getTextContent(),
+        },
+      ],
     }
   }
 

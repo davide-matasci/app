@@ -15,6 +15,7 @@ import { CollapsibleTitleNode } from '../../Plugins/CollapsiblePlugin/Collapsibl
 import { FileNode } from '../../Plugins/EncryptedFilePlugin/Nodes/FileNode'
 import { BubbleNode } from '../../Plugins/ItemBubblePlugin/Nodes/BubbleNode'
 import { RemoteImageNode } from '../../Plugins/RemoteImagePlugin/RemoteImageNode'
+import { LocationNode } from '../../Plugins/LocationPlugin/LocationNode'
 import { InlineFileNode } from '../../Plugins/InlineFilePlugin/InlineFileNode'
 import { CreateEditorArgs } from 'lexical'
 import { FileExportNode } from './FileExportNode'
@@ -42,6 +43,7 @@ const CommonNodes = [
   FileNode,
   BubbleNode,
   RemoteImageNode,
+  LocationNode,
   InlineFileNode,
   ListNode,
 ]

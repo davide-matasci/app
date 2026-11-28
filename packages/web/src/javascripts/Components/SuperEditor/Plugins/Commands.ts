@@ -7,3 +7,9 @@ export const INSERT_DATETIME_COMMAND: LexicalCommand<'date' | 'time' | 'datetime
   createCommand('INSERT_DATETIME_COMMAND')
 export const INSERT_PASSWORD_COMMAND: LexicalCommand<string> = createCommand('INSERT_PASSWORD_COMMAND')
 export const INSERT_REMOTE_IMAGE_COMMAND: LexicalCommand<string> = createCommand('INSERT_REMOTE_IMAGE_COMMAND')
+export const INSERT_LOCATION_COMMAND: LexicalCommand<{
+  lat: number
+  lng: number
+  name?: string
+  replaceSelection?: boolean
+}> = createCommand('INSERT_LOCATION_COMMAND')
