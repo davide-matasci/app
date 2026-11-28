@@ -13,6 +13,8 @@ import { GetDatetimeBlockOptions } from '../Blocks/DateTime'
 import { isMobileScreen } from '@/Utils'
 import { useApplication } from '@/Components/ApplicationProvider'
 import { GetRemoteImageBlockOption } from '../Blocks/RemoteImage'
+import { GetLocationBlockOption } from '../Blocks/Location'
+import { InsertLocationDialog } from '../LocationPlugin/LocationPlugin'
 import { InsertRemoteImageDialog } from '../RemoteImagePlugin/RemoteImagePlugin'
 import { GetParagraphBlockOption } from '../Blocks/Paragraph'
 import { GetH1BlockOption, GetH2BlockOption, GetH3BlockOption } from '../Blocks/Headings'
@@ -60,6 +62,11 @@ export default function BlockPickerMenuPlugin({ popoverZIndex }: { popoverZIndex
       GetRemoteImageBlockOption(() =>
         showModal(c('B3.Notes.EditorToolbar.Label').t`Insert image from URL`, (onClose) => (
           <InsertRemoteImageDialog onClose={onClose} />
+        )),
+      ),
+      GetLocationBlockOption(() =>
+        showModal(c('B3.Notes.EditorToolbar.Label').t`Insert location`, (onClose) => (
+          <InsertLocationDialog editor={editor} onClose={onClose} />
         )),
       ),
       GetUploadFileOption(editor),

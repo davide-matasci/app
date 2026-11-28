@@ -32,6 +32,8 @@ import {
   $isRemoteImageNode,
   RemoteImageNode,
 } from './Plugins/RemoteImagePlugin/RemoteImageNode'
+import { $isLocationNode, LocationNode } from './Plugins/LocationPlugin/LocationNode'
+import { mapLinks } from './Plugins/LocationPlugin/Location'
 import { $createInlineFileNode, $isInlineFileNode, InlineFileNode } from './Plugins/InlineFilePlugin/InlineFileNode'
 
 const HorizontalRule: ElementTransformer = {
@@ -50,6 +52,23 @@ const HorizontalRule: ElementTransformer = {
     }
 
     line.selectNext()
+  },
+  type: 'element',
+}
+
+/** Export only: "[📍 Name (47.37690, 8.54170, 8FVC9GGR+QM)](OpenStreetMap link)". */
+const LOCATION: ElementTransformer = {
+  dependencies: [LocationNode],
+  export: (node: LexicalNode) => {
+    if (!$isLocationNode(node)) {
+      return null
+    }
+    return `[📍 ${node.getTextContent()}](${mapLinks(node.getPoint(), node.getName()).openStreetMap})`
+  },
+  // Never matches while typing or importing: such a line stays an ordinary link.
+  regExp: /(?!)/,
+  replace: () => {
+    return
   },
   type: 'element',
 }
@@ -269,6 +288,7 @@ export const TABLE: ElementTransformer = {
 
 export const MarkdownTransformers = [
   TABLE,
+  LOCATION,
   CHECK_LIST,
   IMAGE,
   INLINE_FILE,

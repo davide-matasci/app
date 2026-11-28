@@ -61,6 +61,7 @@ import { PrefKey, classNames } from '@standardnotes/snjs'
 import { SUPER_TOGGLE_SEARCH, SUPER_TOGGLE_TOOLBAR } from '@standardnotes/ui-services'
 import { useApplication } from '@/Components/ApplicationProvider'
 import { InsertRemoteImageDialog } from '../RemoteImagePlugin/RemoteImagePlugin'
+import { InsertLocationDialog } from '../LocationPlugin/LocationPlugin'
 import StyledTooltip from '@/Components/StyledTooltip/StyledTooltip'
 import { Toolbar, ToolbarItem, useToolbarStore } from '@ariakit/react'
 import { PasswordBlock } from '../Blocks/Password'
@@ -1139,6 +1140,15 @@ const ToolbarPlugin = () => {
             onClick={() =>
               showModal(c('B3.Notes.EditorToolbar.Label').t`Insert image from URL`, (onClose) => (
                 <InsertRemoteImageDialog onClose={onClose} />
+              ))
+            }
+          />
+          <ToolbarMenuItem
+            name={c('B3.Notes.EditorToolbar.Action').t`Location`}
+            iconName="pin"
+            onClick={() =>
+              showModal(c('B3.Notes.EditorToolbar.Label').t`Insert location`, (onClose) => (
+                <InsertLocationDialog editor={activeEditor} onClose={onClose} />
               ))
             }
           />

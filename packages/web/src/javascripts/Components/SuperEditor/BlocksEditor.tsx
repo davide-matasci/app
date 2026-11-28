@@ -24,6 +24,7 @@ import { RemoveBrokenTablesPlugin } from './Plugins/TablePlugin'
 import TableActionMenuPlugin from './Plugins/TableCellActionMenuPlugin'
 import ToolbarPlugin from './Plugins/ToolbarPlugin/ToolbarPlugin'
 import RemoteImagePlugin from './Plugins/RemoteImagePlugin/RemoteImagePlugin'
+import LocationPlugin from './Plugins/LocationPlugin/LocationPlugin'
 import CodeOptionsPlugin from './Plugins/CodeOptionsPlugin/CodeOptions'
 import { SearchPlugin } from './Plugins/SearchPlugin/SearchPlugin'
 import AutoLinkPlugin from './Plugins/AutoLinkPlugin/AutoLinkPlugin'
@@ -133,6 +134,7 @@ export const BlocksEditor: FunctionComponent<BlocksEditorProps> = ({
       <TabIndentationPlugin />
       <RemoveBrokenTablesPlugin />
       <RemoteImagePlugin />
+      <LocationPlugin />
       <CodeOptionsPlugin />
       <SearchPlugin />
       <DatetimePlugin />
