@@ -30,6 +30,8 @@ export class ItemManager extends Services.AbstractService implements Services.It
   private itemCounter!: Models.ItemCounter
   private duplicateTitleIndex = new Models.DuplicateTitleIndex()
   private isShowingDuplicateTitles = false
+  private brokenLinkIndex = this.createBrokenLinkIndex()
+  private isShowingBrokenLinks = false
   private streamDisposers: (() => void)[] = []
 
   private navigationDisplayController!: Models.ItemDisplayController<
@@ -109,6 +111,14 @@ export class ItemManager extends Services.AbstractService implements Services.It
 
     this.itemCounter = new Models.ItemCounter(this.collection, this.itemCounter?.observers)
     this.duplicateTitleIndex = new Models.DuplicateTitleIndex()
+    this.brokenLinkIndex = this.createBrokenLinkIndex()
+  }
+
+  private createBrokenLinkIndex(): Models.BrokenLinkIndex {
+    return new Models.BrokenLinkIndex((uuid) => {
+      const item = this.collection.find(uuid)
+      return item != undefined && !Models.isDeletedItem(item)
+    })
   }
 
   private get allDisplayControllers(): Models.ItemDisplayController<Models.DisplayItem>[] {
@@ -167,6 +177,10 @@ export class ItemManager extends Services.AbstractService implements Services.It
     this.isShowingDuplicateTitles = Boolean(
       options.views?.find((view) => view.uuid === Models.SystemViewId.DuplicateTitles),
     )
+    this.isShowingBrokenLinks = Boolean(options.views?.find((view) => view.uuid === Models.SystemViewId.BrokenLinks))
+    if (this.isShowingBrokenLinks) {
+      additionalFilters.push((item) => this.brokenLinkIndex.hasBrokenLink(item.uuid))
+    }
     if (this.isShowingDuplicateTitles) {
       additionalFilters.push((item) => this.duplicateTitleIndex.hasDuplicateTitle(item.uuid))
     }
@@ -477,6 +491,7 @@ export class ItemManager extends Services.AbstractService implements Services.It
     this.collection.onChange(delta)
     this.itemCounter.onChange(delta)
     const notesWithChangedDuplicateStatus = this.duplicateTitleIndex.onChange(delta)
+    const notesWithChangedLinkStatus = this.brokenLinkIndex.onChange(delta)
 
     const affectedContentTypesArray = Array.from(affectedContentTypes.values())
     for (const controller of this.allDisplayControllers) {
@@ -484,7 +499,8 @@ export class ItemManager extends Services.AbstractService implements Services.It
         controller.onCollectionChange(delta)
       }
     }
-    this.recheckDuplicateTitles(notesWithChangedDuplicateStatus)
+    this.recheckNotesInOpenView(this.isShowingDuplicateTitles, notesWithChangedDuplicateStatus)
+    this.recheckNotesInOpenView(this.isShowingBrokenLinks, notesWithChangedLinkStatus)
 
     this.notifyObserversByUiAdjustingDelta(delta, source, sourceKey)
   }
@@ -930,24 +946,31 @@ export class ItemManager extends Services.AbstractService implements Services.It
 
     const delta = Models.CreateItemDelta({ discarded: items as Models.DeletedItemInterface[] })
     const notesWithChangedDuplicateStatus = this.duplicateTitleIndex.onChange(delta)
+    const notesWithChangedLinkStatus = this.brokenLinkIndex.onChange(delta)
     const affectedContentTypes = items.map((item) => item.content_type)
     for (const controller of this.allDisplayControllers) {
       if (controller.contentTypes.some((ct) => affectedContentTypes.includes(ct))) {
         controller.onCollectionChange(delta)
       }
     }
-    this.recheckDuplicateTitles(notesWithChangedDuplicateStatus)
+    this.recheckNotesInOpenView(this.isShowingDuplicateTitles, notesWithChangedDuplicateStatus)
+    this.recheckNotesInOpenView(this.isShowingBrokenLinks, notesWithChangedLinkStatus)
   }
 
   /**
-   * In the "Duplicate titles" view, a change to one note (renamed, trashed, deleted) can end or start the
-   * duplicate status of other notes, which the list wouldn't re-check by itself.
+   * In the "Duplicate titles" and "Broken links" views, a change to one item (a note renamed, a linked note
+   * deleted) can change whether other notes belong in the view, which the list wouldn't re-check by itself.
    */
-  private recheckDuplicateTitles(uuids: string[]): void {
-    if (!this.isShowingDuplicateTitles || uuids.length === 0) {
+  private recheckNotesInOpenView(isViewOpen: boolean, uuids: string[]): void {
+    if (!isViewOpen || uuids.length === 0) {
       return
     }
     this.navigationDisplayController.onCollectionChange(Models.CreateItemDelta({ changed: this.findItems(uuids) }))
+  }
+
+  /** The number of Super notes linking to a note, tag or file that no longer exists (not counting trashed or archived notes). */
+  public numberOfNotesWithBrokenLinks(): number {
+    return this.brokenLinkIndex.brokenCount()
   }
 
   /** The number of notes whose title is shared with another note (not counting trashed or archived notes). */

@@ -19,6 +19,8 @@ export function getLocalizedSystemViewTitle(id: SystemViewId): string | undefine
       return c('B4.Notes.TagsLinkedItems.Label').t`Conflicts`
     case SystemViewId.DuplicateTitles:
       return c('B4.Notes.TagsLinkedItems.Label').t`Duplicate titles`
+    case SystemViewId.BrokenLinks:
+      return c('B4.Notes.TagsLinkedItems.Label').t`Broken links`
     default:
       return undefined
   }

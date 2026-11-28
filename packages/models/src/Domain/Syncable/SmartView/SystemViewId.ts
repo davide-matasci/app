@@ -7,4 +7,5 @@ export enum SystemViewId {
   StarredNotes = 'starred-notes',
   Conflicts = 'conflicts',
   DuplicateTitles = 'duplicate-titles',
+  BrokenLinks = 'broken-links',
 }

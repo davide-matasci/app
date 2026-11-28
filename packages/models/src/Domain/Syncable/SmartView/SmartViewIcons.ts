@@ -10,6 +10,7 @@ export const SmartViewIcons: Record<SystemViewId, IconType> = {
   [SystemViewId.StarredNotes]: 'star-filled',
   [SystemViewId.Conflicts]: 'merge',
   [SystemViewId.DuplicateTitles]: 'copy',
+  [SystemViewId.BrokenLinks]: 'link-off',
 }
 
 export function systemViewIcon(id: SystemViewId): IconType {
