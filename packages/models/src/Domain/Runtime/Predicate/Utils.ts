@@ -17,3 +17,9 @@ export function dateFromDSLDateString(string: string): Date {
   }
   return date
 }
+
+/** A date as YYYY-MM-DD in local time. */
+export function localDateString(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
