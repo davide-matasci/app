@@ -101,6 +101,17 @@ const SmartViewsListItem: FunctionComponent<Props> = ({ view, tagsState, setEdit
   const iconClass = getIconClass(view, isSelected)
 
   const [conflictsCount, setConflictsCount] = useState(0)
+  const [duplicateTitlesCount, setDuplicateTitlesCount] = useState(0)
+
+  useEffect(() => {
+    if (view.uuid !== SystemViewId.DuplicateTitles) {
+      return
+    }
+
+    return application.items.streamItems(ContentType.TYPES.Note, () => {
+      setDuplicateTitlesCount(application.items.numberOfNotesWithDuplicateTitles())
+    })
+  }, [application, view])
 
   useEffect(() => {
     if (view.uuid !== SystemViewId.Conflicts) {
@@ -113,6 +124,11 @@ const SmartViewsListItem: FunctionComponent<Props> = ({ view, tagsState, setEdit
   }, [application, view])
 
   if (view.uuid === SystemViewId.Conflicts && !conflictsCount) {
+    return null
+  }
+
+  // Like Conflicts: only listed while there is something in it (or while it is the open view).
+  if (view.uuid === SystemViewId.DuplicateTitles && !duplicateTitlesCount && !isSelected) {
     return null
   }
 
@@ -164,6 +180,7 @@ const SmartViewsListItem: FunctionComponent<Props> = ({ view, tagsState, setEdit
           {view.uuid === SystemViewId.AllNotes && tagsState.allNotesCount}
           {view.uuid === SystemViewId.Files && tagsState.allFilesCount}
           {view.uuid === SystemViewId.Conflicts && conflictsCount}
+          {view.uuid === SystemViewId.DuplicateTitles && duplicateTitlesCount}
         </div>
       </div>
 
