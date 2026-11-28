@@ -176,6 +176,7 @@ const ConditionEditor = observer(({ controller, condition, removeButton }: Condi
       </select>
       <PredicateValue
         field={condition.field}
+        operatorId={condition.operatorId}
         value={condition.value}
         setValue={(value) => controller.setValue(condition, value)}
       />

@@ -1,6 +1,6 @@
 import { isString } from '@standardnotes/utils'
 import { FalseyValue, PredicateOperator, PrimitiveOperand, SureValue } from './Interface'
-import { dateFromDSLDateString, localDateString } from './Utils'
+import { dateFromDSLDateString, replaceDatePlaceholders } from './Utils'
 
 export function valueMatchesTargetValue(
   value: PrimitiveOperand,
@@ -11,16 +11,10 @@ export function valueMatchesTargetValue(
     return false
   }
 
-  if (typeof targetValue === 'string' && targetValue.includes('.ago')) {
+  if (operator === 'matches' && typeof targetValue === 'string') {
+    targetValue = replaceDatePlaceholders(targetValue)
+  } else if (typeof targetValue === 'string' && targetValue.includes('.ago')) {
     targetValue = dateFromDSLDateString(targetValue)
-    /**
-     * Against text (e.g. a title), a relative date is that day written as YYYY-MM-DD, in local time:
-     * ["title", "=", "1.years.ago"] finds the diary note titled with the date one year ago, and <, >,
-     * startsWith work on such titles too. (Comparing text with a Date object never matched anything.)
-     */
-    if (typeof value === 'string') {
-      targetValue = localDateString(targetValue)
-    }
   }
 
   /** Before lowercasing: a regex's meaning changes with case (\D is not \d). */
