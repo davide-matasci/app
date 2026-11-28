@@ -236,19 +236,28 @@ function fitPageToVisibleArea() {
     }, 150)
   }
 
+  // The keyboard (or the iPad's shortcut bar) takes part of the screen: only then can iOS move the page.
+  const isKeyboardOpen = () => viewport.height < window.innerHeight - 40
+
   const onResize = () => {
     if (isZoomed()) {
       return
     }
-    document.documentElement.style.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
+    const rootStyle = document.documentElement.style
+    rootStyle.setProperty('--visible-height', `${Math.round(viewport.height)}px`)
+    // The keyboard covers the home indicator: the space kept free for it at the bottom (of the editor, of
+    // lists) would be an empty band above the keyboard, cutting off the last line.
+    if (isKeyboardOpen()) {
+      rootStyle.setProperty('--safe-area-inset-bottom', '0px')
+    } else {
+      rootStyle.removeProperty('--safe-area-inset-bottom')
+    }
     scrollToTop()
   }
 
   viewport.addEventListener('resize', onResize)
   viewport.addEventListener('scroll', scrollToTopWhenSettled)
   window.addEventListener('scroll', scrollToTopWhenSettled, { passive: true })
-  // The keyboard (or the iPad's shortcut bar) takes part of the screen: only then can iOS move the page.
-  const isKeyboardOpen = () => viewport.height < window.innerHeight - 40
 
   let touchStart = { x: 0, y: 0 }
   document.addEventListener(
