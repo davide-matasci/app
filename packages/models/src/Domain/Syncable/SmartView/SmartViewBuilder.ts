@@ -110,7 +110,20 @@ export function BuildSmartViews(options: NotesAndFilesDisplayOptions): SmartView
     }),
   )
 
-  return [notes, files, starred, archived, trash, untagged, conflicts, duplicateTitles]
+  const brokenLinks = new SmartView(
+    new DecryptedPayload({
+      uuid: SystemViewId.BrokenLinks,
+      content_type: ContentType.TYPES.SmartView,
+      ...PayloadTimestampDefaults(),
+      content: FillItemContent<SmartViewContent>({
+        title: c('B4.Notes.TagsLinkedItems.Label').t`Broken links`,
+        // The candidates, as for duplicate titles: the item manager's filter picks those with a broken link.
+        predicate: duplicateTitlesPredicate(options).toJson(),
+      }),
+    }),
+  )
+
+  return [notes, files, starred, archived, trash, untagged, conflicts, duplicateTitles, brokenLinks]
 }
 
 function allNotesPredicate(options: NotesAndFilesDisplayOptions) {
@@ -230,8 +243,9 @@ function starredNotesPredicate(options: NotesAndFilesDisplayOptions) {
 }
 
 /**
- * The candidates only: which of them share a title is decided by a filter the item manager adds, as it
- * depends on the other notes (see DuplicateTitleIndex). Notes in the trash or archived never count.
+ * The candidates only: which of them share a title (or have a broken link) is decided by a filter the item
+ * manager adds, as it depends on other items (see DuplicateTitleIndex, BrokenLinkIndex). Notes in the trash
+ * or archived never count.
  */
 function duplicateTitlesPredicate(options: NotesAndFilesDisplayOptions) {
   const subPredicates: Predicate<SNNote>[] = [

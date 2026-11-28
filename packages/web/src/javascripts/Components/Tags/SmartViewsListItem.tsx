@@ -102,6 +102,21 @@ const SmartViewsListItem: FunctionComponent<Props> = ({ view, tagsState, setEdit
 
   const [conflictsCount, setConflictsCount] = useState(0)
   const [duplicateTitlesCount, setDuplicateTitlesCount] = useState(0)
+  const [brokenLinksCount, setBrokenLinksCount] = useState(0)
+
+  useEffect(() => {
+    if (view.uuid !== SystemViewId.BrokenLinks) {
+      return
+    }
+
+    // Any item: a link breaks when the linked note, tag or file is deleted.
+    return application.items.streamItems(
+      [ContentType.TYPES.Note, ContentType.TYPES.File, ContentType.TYPES.Tag],
+      () => {
+        setBrokenLinksCount(application.items.numberOfNotesWithBrokenLinks())
+      },
+    )
+  }, [application, view])
 
   useEffect(() => {
     if (view.uuid !== SystemViewId.DuplicateTitles) {
@@ -129,6 +144,9 @@ const SmartViewsListItem: FunctionComponent<Props> = ({ view, tagsState, setEdit
 
   // Like Conflicts: only listed while there is something in it (or while it is the open view).
   if (view.uuid === SystemViewId.DuplicateTitles && !duplicateTitlesCount && !isSelected) {
+    return null
+  }
+  if (view.uuid === SystemViewId.BrokenLinks && !brokenLinksCount && !isSelected) {
     return null
   }
 
@@ -181,6 +199,7 @@ const SmartViewsListItem: FunctionComponent<Props> = ({ view, tagsState, setEdit
           {view.uuid === SystemViewId.Files && tagsState.allFilesCount}
           {view.uuid === SystemViewId.Conflicts && conflictsCount}
           {view.uuid === SystemViewId.DuplicateTitles && duplicateTitlesCount}
+          {view.uuid === SystemViewId.BrokenLinks && brokenLinksCount}
         </div>
       </div>
 
