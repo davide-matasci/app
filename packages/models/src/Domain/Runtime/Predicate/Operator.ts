@@ -1,6 +1,6 @@
 import { isString } from '@standardnotes/utils'
 import { FalseyValue, PredicateOperator, PrimitiveOperand, SureValue } from './Interface'
-import { dateFromDSLDateString } from './Utils'
+import { dateFromDSLDateString, replaceDatePlaceholders } from './Utils'
 
 export function valueMatchesTargetValue(
   value: PrimitiveOperand,
@@ -11,7 +11,9 @@ export function valueMatchesTargetValue(
     return false
   }
 
-  if (typeof targetValue === 'string' && targetValue.includes('.ago')) {
+  if (operator === 'matches' && typeof targetValue === 'string') {
+    targetValue = replaceDatePlaceholders(targetValue)
+  } else if (typeof targetValue === 'string' && targetValue.includes('.ago')) {
     targetValue = dateFromDSLDateString(targetValue)
   }
 

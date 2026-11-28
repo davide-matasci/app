@@ -2,11 +2,12 @@ import { getDropdownItemsForAllEditors } from '@/Utils/DropdownItemsForEditors'
 import { ContentType, naturalSort, NoteType, SNTag } from '@standardnotes/snjs'
 import { useApplication } from '../ApplicationProvider'
 import { PredicateKeypath } from './PredicateKeypaths'
-import { ConditionValue, DateUnits, unitLabel } from './Model/SmartViewConditions'
+import { ConditionValue, DateUnits, OperatorId, unitLabel } from './Model/SmartViewConditions'
 import { c } from 'ttag'
 
 type Props = {
   field: PredicateKeypath
+  operatorId?: OperatorId
   value: ConditionValue
   setValue: (value: ConditionValue) => void
 }
@@ -15,19 +16,25 @@ const inputClassName =
   'rounded border border-border bg-default px-2 py-1.5 focus:outline focus:outline-1 focus:outline-info'
 
 /** The control for a condition's value, chosen by the value's kind (never free-form JSON). */
-const PredicateValue = ({ field, value, setValue }: Props) => {
+const PredicateValue = ({ field, operatorId, value, setValue }: Props) => {
   const application = useApplication()
 
   switch (value.kind) {
-    case 'text':
+    case 'text': {
+      // In a pattern, {N.days.ago} (or months, years) stands for that day written as YYYY-MM-DD.
+      const placeholder =
+        operatorId === 'matchesPattern'
+          ? c('Smart view value').t`Pattern, e.g. ^{1.years.ago}$ for the date a year ago`
+          : c('Smart view value').t`Text`
       return (
         <input
           className={`${inputClassName} min-w-0 flex-grow`}
           value={value.text}
-          placeholder={c('Smart view value').t`Text`}
+          placeholder={placeholder}
           onChange={(event) => setValue({ kind: 'text', text: event.target.value })}
         />
       )
+    }
 
     case 'number':
       return (

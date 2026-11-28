@@ -98,9 +98,14 @@ describe('smart view conditions', () => {
     const note = (tags: { uuid: string; title: string }[]) => ({ tags }) as never
 
     expect(predicate.matchesItem(note([{ uuid: 'tag-work', title: 'Renamed' }]))).toBe(true)
-    expect(predicate.matchesItem(note([{ uuid: 'tag-work', title: 'Work' }, { uuid: 'tag-old', title: 'Old' }]))).toBe(
-      false,
-    )
+    expect(
+      predicate.matchesItem(
+        note([
+          { uuid: 'tag-work', title: 'Work' },
+          { uuid: 'tag-old', title: 'Old' },
+        ]),
+      ),
+    ).toBe(false)
     expect(predicate.matchesItem(note([]))).toBe(false)
   })
 
@@ -172,5 +177,17 @@ describe('date conditions written with >= or <=', () => {
 
     const notWithin = predicateToConditionTree({ keypath: 'created_at', operator: '<=', value: '2.years.ago' })
     expect(notWithin.children[0]).toMatchObject({ operatorId: 'notWithinLast' })
+  })
+})
+
+describe('a pattern with a date placeholder', () => {
+  it('is an ordinary "matches pattern" condition and finds the diary note of a year ago', () => {
+    const stored: PredicateJsonForm = { keypath: 'title', operator: 'matches', value: '^{1.years.ago}$' }
+    const tree = predicateToConditionTree(stored)
+    expect(tree.children[0]).toMatchObject({
+      operatorId: 'matchesPattern',
+      value: { kind: 'text', text: '^{1.years.ago}$' },
+    })
+    expect(roundTrip(stored)).toEqual({ operator: 'and', value: [stored] })
   })
 })
