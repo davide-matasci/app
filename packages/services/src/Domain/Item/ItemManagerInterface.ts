@@ -128,6 +128,7 @@ export interface ItemManagerInterface extends AbstractService {
   getDisplayableFiles(): FileItem[]
   setVaultDisplayOptions(options: VaultDisplayOptions): void
   numberOfNotesWithConflicts(): number
+  numberOfNotesWithDuplicateTitles(): number
   /** Returns all notes, files, tags and views */
   getInteractableItems(): DecryptedItemInterface[]
   getDisplayableNotes(): SNNote[]

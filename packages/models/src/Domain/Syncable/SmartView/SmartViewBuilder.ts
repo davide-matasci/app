@@ -98,7 +98,19 @@ export function BuildSmartViews(options: NotesAndFilesDisplayOptions): SmartView
     }),
   )
 
-  return [notes, files, starred, archived, trash, untagged, conflicts]
+  const duplicateTitles = new SmartView(
+    new DecryptedPayload({
+      uuid: SystemViewId.DuplicateTitles,
+      content_type: ContentType.TYPES.SmartView,
+      ...PayloadTimestampDefaults(),
+      content: FillItemContent<SmartViewContent>({
+        title: c('B4.Notes.TagsLinkedItems.Label').t`Duplicate titles`,
+        predicate: duplicateTitlesPredicate(options).toJson(),
+      }),
+    }),
+  )
+
+  return [notes, files, starred, archived, trash, untagged, conflicts, duplicateTitles]
 }
 
 function allNotesPredicate(options: NotesAndFilesDisplayOptions) {
@@ -215,6 +227,23 @@ function starredNotesPredicate(options: NotesAndFilesDisplayOptions) {
   const predicate = new CompoundPredicate('and', subPredicates)
 
   return predicate
+}
+
+/**
+ * The candidates only: which of them share a title is decided by a filter the item manager adds, as it
+ * depends on the other notes (see DuplicateTitleIndex). Notes in the trash or archived never count.
+ */
+function duplicateTitlesPredicate(options: NotesAndFilesDisplayOptions) {
+  const subPredicates: Predicate<SNNote>[] = [
+    new Predicate('content_type', '=', ContentType.TYPES.Note),
+    new Predicate('trashed', '=', false),
+    new Predicate('archived', '=', false),
+  ]
+  if (options.includeProtected === false) {
+    subPredicates.push(new Predicate('protected', '=', false))
+  }
+
+  return new CompoundPredicate('and', subPredicates)
 }
 
 function conflictsPredicate(options: NotesAndFilesDisplayOptions) {
